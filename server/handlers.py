@@ -141,12 +141,18 @@ class S1S2RawFennecData(object):
             'where blddate >= $start and blddate <= $end',
             vars=dict(start=start, end=end))]
 
+        data_validity_check = 'throbberstart>0'
+        if metric == 'throbberstop':
+          data_validity_check += ' and throbberstop>0'
+        elif metric == 'totaldrawing':
+          data_validity_check += ' and enddrawing>0'
+
         for phoneid in phoneids:
             for revision in revisions:
                 data = db.select(
                   'rawfennecstart',
                   what=self.metrics[metric] + ',blddate',
-                  where='phoneid=$phoneid and revision=$revision and testname=$testname and productname=$product and throbberstart>0 and throbberstop>0',
+                  where='phoneid=$phoneid and revision=$revision and testname=$testname and productname=$product and ' + data_validity_check,
                   vars=dict(phoneid=phoneid, revision=revision,
                             testname=testname, product=product))[0]
                 avg = data[self.metrics[metric]]
