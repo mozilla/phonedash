@@ -129,7 +129,13 @@ class S1S2RawFennecData(object):
         testname = query['testname'][0]
         phoneids = [x.strip() for x in query['phoneid'][0].split(',')]
         start = query['start'][0]
-        end = query['end'][0]
+        # add one to the end date so we capture the full end day
+        # e.g. if the user gives an end day of 2012-01-01, we want
+        # everything on that day, so really we want everything before
+        # 2012-01-02.
+        end = (datetime.strptime(query['end'][0], '%Y-%m-%d').date() +
+               timedelta(days=1)).strftime('%Y-%m-%d')
+
         metric = query['metric'][0]
         product = query['product'][0]
 
@@ -138,7 +144,7 @@ class S1S2RawFennecData(object):
 
         revisions = [x['revision'] for x in db.query(
             'select distinct revision from rawfennecstart '
-            'where blddate >= $start and blddate <= $end',
+            'where blddate >= $start and blddate < $end',
             vars=dict(start=start, end=end))]
 
         data_validity_check = 'throbberstart>0'
