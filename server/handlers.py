@@ -165,7 +165,9 @@ class S1S2RawFennecData(object):
                 blddate = data['blddate']
                 if avg is None:
                     continue
-                results[phoneid][testname][metric][blddate.isoformat()] = float(avg)
+                results[phoneid][testname][metric][blddate.isoformat()] = {
+                  'value': float(avg),
+                  'revision': revision }
         return results
 
 

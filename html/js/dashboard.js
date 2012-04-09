@@ -794,10 +794,19 @@ function productDescr(productname) {
   return (productname in productmap) ? productmap[productname] : productname;
 }
 
-function showLineTooltip(x, y, timestamp, value) {
-  var date = new Date(Math.floor(timestamp));
-  var content = ich.flot_tooltip({ date: date.toDateString(),
-                                   value: Math.floor(value) });
+function showLineTooltip(x, y, timestamp, product, revision, value) {
+  var params = {
+    date: new Date(Math.floor(timestamp)).toDateString(),
+    value: Math.floor(value),
+    revision: revision,
+    url: ''
+  };
+  if (product == 'org.mozilla.fennec') {
+    params.url = 'https://hg.mozilla.org/mozilla-central/rev/';
+  }
+  params.url += revision;
+  var content = ich.flot_tooltip(params);
+
   $(content).css({
     top: y + 5,
     left: x + 5
@@ -846,6 +855,9 @@ function showRawFennecStartupCharts(params) {
     }).map(function(name) {
       return name + "=" + params[name];
     }).join("&");
+
+  // Indexed by build date--this assumes that each build date is unique...
+  var revisions = {};
   
   $.getJSON(resourceURL, function(data) {
     $('#container').html('');
@@ -853,9 +865,12 @@ function showRawFennecStartupCharts(params) {
     var points = [];
     for (phoneid in data) {
       points = [];
+      var d, v;
       for (blddate in data[phoneid][params.testname][params.metric]) {
-        points.push([new Date(blddate).getTime(),
-                     data[phoneid][params.testname][params.metric][blddate]]);
+        d = new Date(blddate).getTime();
+        points.push([d,
+                     data[phoneid][params.testname][params.metric][blddate]['value']]);
+        revisions[d] = data[phoneid][params.testname][params.metric][blddate]['revision'];
       }
       points.sort(function(x, y) { return x[0] < y[0]; });
       series.push({ data: points, label: phoneName(phoneid) });
@@ -881,9 +896,8 @@ function showRawFennecStartupCharts(params) {
 
   $('#container').bind('plothover',
     plotHover(function (item) {
-      var x = item.datapoint[0].toFixed(2),
-          y = item.datapoint[1];
-      showLineTooltip(item.pageX, item.pageY, x, y);
+      var y = item.datapoint[1];
+      showLineTooltip(item.pageX, item.pageY, item.datapoint[0], params.product, revisions[item.datapoint[0]], y);
     })
   );
 }
