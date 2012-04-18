@@ -1,255 +1,91 @@
 <!DOCTYPE HTML>
 <html>
 
+<!-- This Source Code Form is subject to the terms of the Mozilla Public
+   - License, v. 2.0. If a copy of the MPL was not distributed with this file,
+   - You can obtain one at http://mozilla.org/MPL/2.0/.  -->
+
 <head>
-  <meta charset="utf-8">
-  <link rel="stylesheet" href="/templeton/style/Aristo/jquery-ui-1.8.7.custom.css"/>
-  <link rel="stylesheet" href="css/screen.css"/>
-  <title>Testperf Dashboard - Mozilla</title>
+    <meta charset="utf-8">
+    <link rel="stylesheet" href="bootstrap/css/bootstrap.min.css"/>
+    <link rel="stylesheet" href="style/Aristo/jquery-ui-1.8.7.custom.css"/>
+    <link rel="stylesheet" href="style/main.css"/>
+    <script src="scripts/jquery-1.7.1.min.js"></script>
+    <script src="scripts/jquery-ui-1.8.13.custom.min.js"></script>
+    <script src="scripts/SS.min.js"></script>
+    <script src="bootstrap/js/bootstrap.min.js"></script>
+    <script src="scripts/jquery.flot.min.js"></script>
+    <script src="scripts/jquery.flot.axislabels.js"></script>
+    <script src="scripts/ICanHaz.min.js"></script>
+    <script src="scripts/plot.js"></script>
+    <script src="scripts/app.js"></script>
+    <title>rawfennecstartup results</title>
 </head>
 
 <body>
-<div id="topbar">
-  <a href="#/">
-    <p id="logo">
-      testperf<span id="logo-2">ormance</span>
-    </p>
-  </a>
-  <ul id="nav">
-   <!-- <li id="nav_diskio"><a href="#/diskio">Disk I/O</a></li>
-   <li id="nav_mochitest"><a href="#/mochitest">Mochitest metrics</a></li>-->
-    <li id="nav_xbrowserstartup"><a href="#/xbrowserstartup">Mobile Cross
-        Browser Startup</a></li>
-    <li id="nav_rawfennecstartup"><a href="#/rawfennecstartup">Raw Fennec Startup</a></li>
-    </ul>
-</div>
-<div id="wrapper">
-  <div class="clearfix floatholder">
-    <div id="floatleft"></div>
-    <div id="floatright"></div>
+
+<div class="container-fluid">
+  <div class="row-fluid" id="header">
+    <div class="span6"><h1>rawfennecstartup results</h1></div>
   </div>
-</div>
-</body>
-<script src="/templeton/scripts/jquery-1.6.1.min.js"></script>
-<script src="/templeton/scripts/jquery-ui-1.8.13.custom.min.js"></script>
-<script src="/templeton/scripts/jquery.flot.min.js"></script>
-<script src="/templeton/scripts/jquery.flot.axislabels.js"></script>
-<script src="js/SS.min.js"></script>
-<script src="js/ICanHaz.min.js"></script>
-<script src="js/highcharts.js"></script>
-<script src="js/modules/exporting.js"></script>
-<script src="js/dashboard.js"></script>
-
-<!-- 
-     Templates
--->
-
-<script id="index_rightpanel" type="text/html">
-  <div id="content-main">
-    <h2>Testperf Dashboard</h2>
-    <p>This is the test performance dashboard! The aim of this site is to provide some insight into Firefox test performance over time.
-      Follow the links on top to access the different metrics.</p>
-    <br/>
-    <p>Built by <a href="http://wiki.mozilla.org/Auto-tools">Mozilla Firefox Automation & Tools Engineering</a>. 
-      Source available on <a href="https://github.com/wlach/testperf_dashboard">github</a>.</p>
-  </div>
-</script>
-
-<script id="diskio_leftpanel" type="text/html">
-  <div id="content-menu">
-    <div class="formholder">
-      <form id="data-selector">
-        <label>Tree: </label>
-        <select name="tree">
-          <option>mozilla-central</option>
-          <option selected>any</option>
+  <div class="row-fluid">
+    <div class="span2">
+      <form name="controls" id="controls">
+        <select name="product" id="product">
+          <option value="">loading...</option>
         </select>
-        <br/>
-        <label>Test Group: </label>
-        <select name="testgroup">
-          <option>xperfstartup</option>
-          <option selected>any</option>          
+        <select name="test" id="test">
+          <option value="">loading...</option>
         </select>
-        <br/>
-        <label>Test: </label>
-        <select name="test">
-          <option>xperfstartup</option>
-          <option selected>any</option>          
-        </select>
-        <br/>
-        <label>Platform: </label>
-        <select name="platform">
-          <option>win32</option>
-          <option>win64</option>
-          <option selected>any</option>
-        </select>
-        <br/>
-        <label>Build Type: </label>
-        <select name="buildtype">
-          <option>opt</option>
-          <option>debug</option>
-          <option selected>any</option>
-        </select>
-        <br/>
-        <input type="submit" name="submit" value="submit"/>        
-      </form>      
-    </div>
-  </div>
-</script>
-
-<script id="diskio_rightpanel" type="text/html">
-  <div id="content-main"><p>This particular view doesn't really work at the moment, but you can fiddle
-  with the various settings and generate some graphs if it strikes your fancy.</p></div>
-  <div id="container"></div>
-  <div id="container2"></div>
-  <div id="container3"></div>
-</script>
-
-<script id="mochitest_leftpanel" type="text/html">
-  <div id="content-menu">
-    <div class="formholder">
-      <form id="data-selector">
-        <label>Tree: </label>
-        <select name="tree">
-          <option>mozilla-central</option>
-          <option selected>any</option>
-        </select>
-        <br/>
-        <label>Test Group: </label>
-        <select name="testgroup">
-          <option>mochitest-perf</option>
-          <option selected>any</option>          
-        </select>
-        <br/>
-        <label>Platform: </label>
-        <select name="platform">
-          <option>win32</option>
-          <option>linux</option>
-          <option>macosx64</option>
-          <option selected>any</option>
-        </select>
-        <br/>
-        <label>Build Type: </label>
-        <select name="buildtype">
-          <option>opt</option>
-          <option>debug</option>
-          <option selected>any</option>
-        </select>
-        <br/>
-        <input type="submit" name="submit" value="submit"/>        
-      </form>      
-    </div>
-  </div>
-</script>
-
-<script id="mochitest_rightpanel" type="text/html">
-  <div id="content-main"><p>This is a placeholder template for the results of mdas's mochitest performance metrics</p></div>
-  <div id="container-run"></div>
-  <div id="container-load"></div>
-</script>
-
-<script id="xbrowserstartup_leftpanel" type="text/html">
-  <div id="content-menu">
-    <div class="formholder">
-      <form id="data-selector">
-        <label>Test: </label>
-        <select name="test">
-            <option value="local-onload">Local Blank Page (local-s1)</option>
-            <option value="remote-onload">Remote Blank Page (remote-s1)</option>
-            <option value="local-twitter">Local Twitter Page (local-s2)</option>
-            <option value="remote-twitter">Remote Twitter Page (remote-s2)</option>
-        </select>
-        <br/>
-        <label>Style: </label>
-        <select name="style">
-            <option value="warm">Warm Start</option>
-            <!--<option value="cold">Cold Start</option>-->
-        </select>
-        <br/>
-        <label>Dates: </label>
-        <select name="date">
-            <option value="7">Previous Week</option>
-            <option value="14">Previous 2 Weeks</option>
-            <option value="30">Previous Month</option>
-            <option value="60">Previous 2 Month</option>
-            <option value="180">All - get coffee :)</option>
-        </select>
-        <br/>
-        <input type="submit" name="submit" value="submit"/>
-      </form>
-    </div>
-  </div> 
-</script>
-
-<script id="xbrowserstartup_rightpanel" type="text/html">
-    <div id="container"</div>
-</script>
-
-<script id="rawfennec_leftpanel" type="text/html">
-  <div id="content-menu">
-    <div class="formholder">
-      <form id="data-selector">
-        <label>Tree:</label>
-        <select name="product" id="productmenu">
-        </select>
-        <br/>
-        <label>Test:</label>
-        <select name="testname" id="testmenu">
-        </select>
-        <br/>
-        <label>Metric:</label>
-        <select name="metric">
+        <select name="metric" id="metric">
           <option value="throbberstart">time to throbber start</option>
           <option value="throbberstop">time to throbber stop</option>
           <option value="totaldrawing">total drawing time</option>
         </select>
-        <br/>
-        <label>Phones:</label>
-        <div id="phonemenu" class="optionmenu">
-          loading...<br/>
+        <div id="phone" class="optionmenu">
+          loading...
         </div>
-        <div style="clear:both"></div>
-        <label>Dates: </label>
-        <select name="date">
-            <option value="7">Previous Week</option>
-            <option value="14">Previous 2 Weeks</option>
-            <option value="30">Previous Month</option>
-            <option value="60">Previous 2 Months</option>
-            <option value="180">All Data</option>
-        </select>
-        <br/>
-        <input type="submit" name="submit" value="submit"/>
       </form>
-    </div>  
+      <form name="datecontrols" id="datecontrols">
+        Date range:<br/>
+        <input id="startdate" type="text" size="10" pattern="[\d]{4}-[\d]{2}-[\d]{2}" /><br/>
+        <input id="enddate" type="text" size="10" pattern="[\d]{4}-[\d]{2}-[\d]{2}" /><br/>
+        Or select recent period:
+        <select name="period" id="period">
+          <option value="0" selected="selected">---</option>
+          <option value="7">Last 7 days</option>
+          <option value="14">Last 14 days</option>
+          <option value="30">Last 30 days</option>
+          <option value="60">Last 60 days</option>
+        </select>
+      </form>
+    </div>
+    <div class="span10"><div id="plot"></div></div>
   </div>
+</div>
+
+<!--ICanHaz templates-->
+<script type="text/html" id="controlopt">
+  <option value="{{ value }}">{{ text }}</option>
 </script>
 
-<script id="testname_option" type="text/html">
-  <option value="{{ testname }}">{{ testdescr }}</option>
+<script type="text/html" id="nodata">
+  <div>no data!</div>
 </script>
 
-<script id="phoneid_checkbox" type="text/html">
-  <input type="checkbox" name="phoneid" value="{{ phoneid }}"> {{ phonename }}</input><br/>
-</script>
-
-<script id="product_option" type="text/html">
-  <option value="{{ productname }}">{{ productdescr }}</option>
-</script>
-
-<script id="rawfennec_rightpanel" type="text/html">
-  <div id="container"></div>
-</script>
-
-<script id="rightpanel_loading" type="text/html">
-  <div>loading...</div>
-</script>
-
-<script id="rightpanel_nodata" type="text/html">
-  <div>no data</div>
+<script id="checkbox" type="text/html">
+  <input type="checkbox" value="{{ value }}"> {{ text }}</input><br/>
 </script>
 
 <script type="text/html" id="flot_tooltip">
   <div class="tooltip">{{ date }} (<a href="{{ url }}">{{ revision }}</a>): <b>{{ value }}</b></div>
+</script>
+<!--------------------->
+
+</body>
+
+<script>
+$(document).ready(main);
 </script>
 
 </html>

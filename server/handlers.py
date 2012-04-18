@@ -30,46 +30,11 @@ db = web.database(dbn='mysql', host=MYSQL_SERVER, db=MYSQL_DB, user=MYSQL_USER,
 
 # "/api/" is automatically prepended to each of these
 urls = (
- '/xbrowserstartup/?', "CrossBrowserStartupHandler",
- '/xbrowserstartup_add/?', "CrossBrowserStartupAddResult",
  '/s1s2_add/?', "S1S2RawFennecAddResult",
- '/s1s2/params/?',"S1S2RawFennecParameters",
+ '/s1s2/info/?',"S1S2RawFennecParameters",
  '/s1s2/data/?', 'S1S2RawFennecData'
 )
 
-class CrossBrowserStartupAddResult():
-    @templeton.handlers.json_response
-    def GET(self):
-        conn = MySQLdb.connect(host = MYSQL_SERVER,
-                               user = MYSQL_USER,
-                               passwd = MYSQL_PASSWD,
-                               db = MYSQL_DB)
-        params,body = templeton.handlers.get_request_parms()
-
-        p = json.loads(params["data"][0])
-        c = conn.cursor()
-        query = "INSERT INTO " + MYSQL_DB + "." + MYSQL_TABLE + " VALUES(\
-                %s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)"
-        blddate = datetime.fromtimestamp(float(p["testsuites"][0]["starttime"]))
-        now = datetime.now()
-        perfdata = p["testsuites"][0]["perfdata"][0] 
-        testgroup = p["testgroup"]
-
-        # Take the JSON we got and put it in the database
-        c.execute(query, (perfdata["perfdata"][0]["phone"],
-                          perfdata["perfdata"][0]["browser"],
-                          perfdata["perfdata"][0]["type"],
-                          perfdata["perfdata"][0]["result"],
-                          blddate.strftime("%Y-%m-%d %H:%M:%S"),
-                          testgroup["revision"],
-                          testgroup["buildtype"],
-                          testgroup["productname"],
-                          testgroup["platform"],
-                          testgroup["os"],
-                          testgroup["machine"],
-                          testgroup["harness"],
-                          now.strftime("%Y-%m-%d %H:%M:%S")))
-        conn.commit()
 
 class S1S2RawFennecAddResult():
     @templeton.handlers.json_response
@@ -114,7 +79,7 @@ class S1S2RawFennecParameters(object):
             'select distinct testname from rawfennecstart')]
         products = [x['productname'] for x in db.query(
             'select distinct productname from rawfennecstart')]
-        return {'phones': phones, 'tests': tests, 'products': products}
+        return {'phone': phones, 'test': tests, 'product': products}
 
 
 class S1S2RawFennecData(object):
@@ -126,8 +91,8 @@ class S1S2RawFennecData(object):
     @templeton.handlers.json_response
     def GET(self):
         query, body = templeton.handlers.get_request_parms()
-        testname = query['testname'][0]
-        phoneids = [x.strip() for x in query['phoneid'][0].split(',')]
+        test = query['test'][0]
+        phoneids = query['phone']
         start = query['start'][0]
         # add one to the end date so we capture the full end day
         # e.g. if the user gives an end day of 2012-01-01, we want
@@ -158,115 +123,14 @@ class S1S2RawFennecData(object):
                 data = db.select(
                   'rawfennecstart',
                   what=self.metrics[metric] + ',blddate',
-                  where='phoneid=$phoneid and revision=$revision and testname=$testname and productname=$product and ' + data_validity_check,
+                  where='phoneid=$phoneid and revision=$revision and testname=$test and productname=$product and ' + data_validity_check,
                   vars=dict(phoneid=phoneid, revision=revision,
-                            testname=testname, product=product))[0]
+                            test=test, product=product))[0]
                 avg = data[self.metrics[metric]]
                 blddate = data['blddate']
                 if avg is None:
                     continue
-                results[phoneid][testname][metric][blddate.isoformat()] = {
+                results[phoneid][test][metric][blddate.isoformat()] = {
                   'value': float(avg),
                   'revision': revision }
         return results
-
-
-class CrossBrowserStartupHandler():
-    @templeton.handlers.json_response
-    def GET(self):
-        conn = MySQLdb.connect(host = MYSQL_SERVER,
-                               user = MYSQL_USER,
-                               passwd = MYSQL_PASSWD,
-                               db = MYSQL_DB)
-
-        params,body = templeton.handlers.get_request_parms()
-
-
-        testname = params["test"][0] + "-" + params["style"][0] + "-startup"
-
-        #TODO: Optimize queries, there's a much better way to do this, not
-        # thinking of it now, too tired.
-        revq = "SELECT DISTINCT revision FROM " + MYSQL_DB + "." + MYSQL_TABLE
-        phoneq = "SELECT DISTINCT phoneid FROM " + MYSQL_DB + "." + MYSQL_TABLE
-        browserq = "SELECT DISTINCT browserid FROM " + MYSQL_DB + "." + MYSQL_TABLE
-        testq =  "SELECT DISTINCT testname FROM " + MYSQL_DB + "." + MYSQL_TABLE
-        resultq = "SELECT AVG(result), blddate FROM " + MYSQL_DB + "." + MYSQL_TABLE + \
-" WHERE ((DATE_SUB(CURDATE(),INTERVAL " + params["date"][0] + " DAY) <= blddate) \
-AND revision=%s AND phoneid=%s AND browserid=%s AND testname=%s)"
-
-        series = []
-
-        c = conn.cursor()
-        c.execute(revq)
-        revrows = c.fetchall()
-
-        c.execute(phoneq)
-        phonerows = c.fetchall()
-
-        c.execute(browserq)
-        browserrows = c.fetchall()
-
-        c.execute(testq)
-        testrows = c.fetchall()
-
-        # TODO: Can this be cleaned up by pushing logic into db
-        for rev in revrows:
-            for phone in phonerows:
-                for browser in browserrows:
-                    phone_browser = phone[0] + "-" + browser[0]
-                    # If our phone browser combo not in the series add it.
-                    # If it is in the list return the index.
-                    # Either way we get the index of the phone_browser
-                    # combo in the list.
-                    idx = self.ensure_in_series(phone_browser, series)
-
-                    # testname is one of the parameters to this function
-                    print resultq % (rev[0], phone[0], browser[0], testname)
-                    c.execute(resultq, (rev[0],
-                                        phone[0],
-                                        browser[0],
-                                        testname))
-                    resultrows = c.fetchall()
-
-                    # If we have no data for this phone-browser test then
-                    # skip it.
-                    if resultrows[0][0] == None:
-                        # DEBUGGING
-                        print "-------------"
-                        print "No data for phone-browser: %s on test: %s for rev: %s" % (phone_browser, testname, rev[0])
-                        continue
-                    # There is just one average for this result and bldtime  so push
-                    # into our array
-                    avg = int(resultrows[0][0])
-                    blddate = resultrows[0][1]
-
-                    # Stupid python can't do a totimestamp...
-                    tstamp = time.strptime(blddate.strftime("%Y-%m-%d %H:%M:%S"),
-                                            "%Y-%m-%d %H:%M:%S")
-                    tstamp = time.mktime(tstamp)
-                    # Debugging code
-                    print "------------"
-                    print "DATE: %s" % blddate.isoformat()
-                    print "TSTAMP: %s" % tstamp
-                    print "REV: %s" % rev[0]
-                    print "PHONE: %s" % phone[0]
-                    print "BROWSER: %s" % browser[0]
-                    print "AVG %s" % avg
-
-                    # Add our point to the series data - our tstamp is in
-                    # secs since EPOC, we need it to be ms since epoc for charts,
-                    # so multiply by 1000.
-                    series[idx]["data"].append([tstamp * 1000, avg, phone_browser])
-
-        retval = {"series": series}
-        #print retval
-        return retval
-        
-    def ensure_in_series(self, phone_browser, series):
-        for i in range(len(series)):
-            if series[i]['name'] == phone_browser:
-                return i
-        # If we don't find it, add it
-        series.append({"name":phone_browser, "data":[]})
-        return series.index({"name":phone_browser, "data":[]})
-

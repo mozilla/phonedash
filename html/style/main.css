@@ -1,0 +1,36 @@
+body {
+  background-color: rgb(240, 240, 240);
+}
+
+#header {
+  padding: 10px 0 10px 0;
+}
+
+#info {
+  text-align: right;
+}
+
+#plot {
+  width: 1000px;
+  height: 600px;
+}
+
+.tooltip {
+  position: absolute;
+  border: 1px solid #fdd;
+  padding: 2px;
+  background-color: #fee;
+  opacity: 0.80;
+}
+
+input, textarea, select, .uneditable-input {
+  width: 170px;
+}
+
+input[type=text] {
+  width: 140px;
+}
+
+.optionmenu {
+  font-size: smaller;
+}
