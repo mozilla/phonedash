@@ -85,7 +85,7 @@ class S1S2RawFennecParameters(object):
 class S1S2RawFennecData(object):
 
     metrics = { 'throbberstart': 'AVG(throbberstart-starttime)',
-                'throbberstop': 'AVG(throbberstop-throbberstart)',
+                'throbberstop': 'AVG(throbberstop-starttime)',
                 'totaldrawing': 'AVG(enddrawing-starttime)' }
 
     @templeton.handlers.json_response
