@@ -1,3 +1,7 @@
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
 from collections import defaultdict
 from datetime import date, datetime, timedelta
 import time
@@ -9,24 +13,13 @@ import re
 import templeton
 import templeton.handlers
 import web
-import MySQLdb
-import pdb
 
 try:
   import json
 except:
   import simplejson as json
 
-config = ConfigParser.ConfigParser()
-config.read("settings.cfg")
-MYSQL_SERVER = config.get("database", "MYSQL_SERVER")
-MYSQL_PASSWD = config.get("database", "MYSQL_PASSWD")
-MYSQL_USER = config.get("database", "MYSQL_USER")
-MYSQL_DB = config.get("database", "MYSQL_DB")
-MYSQL_TABLE = config.get("database", "MYSQL_TABLE")
-
-db = web.database(dbn='mysql', host=MYSQL_SERVER, db=MYSQL_DB, user=MYSQL_USER,
-                  pw=MYSQL_PASSWD)
+import autophonedb
 
 # "/api/" is automatically prepended to each of these
 urls = (
@@ -39,46 +32,38 @@ urls = (
 class S1S2RawFennecAddResult():
     @templeton.handlers.json_response
     def POST(self):
-        conn = MySQLdb.connect(host = MYSQL_SERVER,
-                               user = MYSQL_USER,
-                               passwd = MYSQL_PASSWD,
-                               db = MYSQL_DB)
         r = json.loads(web.data())
         print r
         # Get our dates correct
         blddate = datetime.fromtimestamp(float(r["data"]["blddate"]))
         now = datetime.now()
-        c = conn.cursor()
-        query = "INSERT INTO " + MYSQL_DB + "." + "rawfennecstart " + "VALUES(\
-                %s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s, %s)"
-        c.execute(query, (r["data"]["phoneid"],
-                          r["data"]["testname"],
-                          r["data"]["starttime"],
-                          r["data"]["throbberstart"],
-                          r["data"]["throbberstop"],
-                          r["data"]["enddrawing"],
-                          blddate.strftime("%Y-%m-%d %H:%M:%S"),
-                          r["data"]["revision"],
-                          r["data"]["bldtype"],
-                          r["data"]["productname"],
-                          r["data"]["productversion"],
-                          r["data"]["osver"],
-                          r["data"]["machineid"],
-                          now.strftime("%Y-%m-%d %H:%M:%S")))
-
-        conn.commit()
+        autophonedb.db.insert(autophonedb.SQL_TABLE,
+                           phoneid=r["data"]["phoneid"],
+                           testname=r["data"]["testname"],
+                           starttime=r["data"]["starttime"],
+                           throbberstart=r["data"]["throbberstart"],
+                           throbberstop=r["data"]["throbberstop"],
+                           enddrawing=r["data"]["enddrawing"],
+                           blddate=blddate.strftime("%Y-%m-%d %H:%M:%S"),
+                           revision=r["data"]["revision"],
+                           bldtype=r["data"]["bldtype"],
+                           productname=r["data"]["productname"],
+                           productversion=r["data"]["productversion"],
+                           osver=r["data"]["osver"],
+                           machineID=r["data"]["machineid"],
+                           runstamp=now.strftime("%Y-%m-%d %H:%M:%S"))
 
 
 class S1S2RawFennecParameters(object):
 
     @templeton.handlers.json_response
     def GET(self):
-        phones = [x['phoneid'] for x in db.query(
-            'select distinct phoneid from rawfennecstart')]
-        tests = [x['testname'] for x in db.query(
-            'select distinct testname from rawfennecstart')]
-        products = [x['productname'] for x in db.query(
-            'select distinct productname from rawfennecstart')]
+        phones = [x['phoneid'] for x in autophonedb.db.query(
+            'select distinct phoneid from %s' % autophonedb.SQL_TABLE)]
+        tests = [x['testname'] for x in autophonedb.db.query(
+            'select distinct testname from %s' % autophonedb.SQL_TABLE)]
+        products = [x['productname'] for x in autophonedb.db.query(
+            'select distinct productname from %s' % autophonedb.SQL_TABLE)]
         return {'phone': phones, 'test': tests, 'product': products}
 
 
@@ -107,9 +92,10 @@ class S1S2RawFennecData(object):
         # results[phone][test][metric][blddate] = value
         results = defaultdict(lambda: defaultdict(lambda: defaultdict(dict)))
 
-        revisions = [x['revision'] for x in db.query(
-            'select distinct revision from rawfennecstart '
-            'where blddate >= $start and blddate < $end',
+        revisions = [x['revision'] for x in autophonedb.db.query(
+            'select distinct revision from %s '
+            'where blddate >= $start and blddate < $end' %
+            autophonedb.SQL_TABLE,
             vars=dict(start=start, end=end))]
 
         data_validity_check = 'throbberstart>0'
@@ -120,14 +106,16 @@ class S1S2RawFennecData(object):
 
         for phoneid in phoneids:
             for revision in revisions:
-                data = db.select(
-                  'rawfennecstart',
+                data = autophonedb.db.select(
+                  autophonedb.SQL_TABLE,
                   what=self.metrics[metric] + ',blddate',
                   where='phoneid=$phoneid and revision=$revision and testname=$test and productname=$product and ' + data_validity_check,
                   vars=dict(phoneid=phoneid, revision=revision,
                             test=test, product=product))[0]
                 avg = data[self.metrics[metric]]
                 blddate = data['blddate']
+                if not isinstance(blddate, datetime):
+                    blddate = datetime.strptime(blddate, '%Y-%m-%d %H:%M:%S')
                 if avg is None:
                     continue
                 results[phoneid][test][metric][blddate.isoformat()] = {
