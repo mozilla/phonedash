@@ -28,7 +28,6 @@ urls = (
  '/s1s2/data/?', 'S1S2RawFennecData'
 )
 
-
 class S1S2RawFennecAddResult():
     @templeton.handlers.json_response
     def POST(self):
