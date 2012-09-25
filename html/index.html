@@ -16,6 +16,7 @@
     <script src="bootstrap/js/bootstrap.min.js"></script>
     <script src="scripts/jquery.flot.min.js"></script>
     <script src="scripts/jquery.flot.axislabels.js"></script>
+    <script src="scripts/jquery.flot.hiddengraphs.js"></script>
     <script src="scripts/ICanHaz.min.js"></script>
     <script src="scripts/plot.js"></script>
     <script src="scripts/app.js"></script>
@@ -42,9 +43,6 @@
           <option value="throbberstop">time to throbber stop</option>
           <option value="totaldrawing">total drawing time</option>
         </select>
-        <div id="phone" class="optionmenu">
-          loading...
-        </div>
       </form>
       <form name="datecontrols" id="datecontrols">
         Date range:<br/>
@@ -59,6 +57,7 @@
           <option value="60">Last 60 days</option>
         </select>
       </form>
+      <div id="legend"></div>
     </div>
     <div class="span10"><div id="plot"></div></div>
   </div>
@@ -71,10 +70,6 @@
 
 <script type="text/html" id="nodata">
   <div>no data!</div>
-</script>
-
-<script id="checkbox" type="text/html">
-  <input type="checkbox" value="{{ value }}"> {{ text }}</input><br/>
 </script>
 
 <script type="text/html" id="flot_tooltip">

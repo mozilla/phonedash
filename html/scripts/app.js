@@ -2,14 +2,16 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this file,
  * You can obtain one at http://mozilla.org/MPL/2.0/. */
 
+var allPhones = [];
+
 function loadOptions(data) {
   var i;
   for (var option in data) {
     data[option].sort();
     var ichcls, descrFunc;
     if (option == 'phone') {
-      ichcls = ich.checkbox;
-      descrFunc = phoneName;
+      allPhones = data[option].slice(0);
+      continue;
     } else if (option == 'test') {
       ichcls = ich.controlopt;
       descrFunc = testDescr;
@@ -26,11 +28,12 @@ function loadOptions(data) {
 }
 
 function getDataPoints(data) {
-  var revisions = {}, plotdata = [], series = {};
-  var phone, test, metric, builddate, buildtime;
+  var revisions = {}, plotdata = [], series = {}, phones = [];
+  var i, phone, test, metric, builddate, buildtime;
   for (phone in data) {
+    phones.push(phone);
     series = {};
-    series.label = phoneName(phone);
+    series.label = phone;
     series.data = [];
     for (test in data[phone]) {
       for (metric in data[phone][test]) {
@@ -45,8 +48,31 @@ function getDataPoints(data) {
     series.data.sort(function(a, b) { return a[0] - b[0]; });
     plotdata.push(series);
   }
-  return { data: plotdata,
-           revisions: revisions };
+
+  // Include phones with no data in legend and mark them appropriately.
+  for (i = 0; i < allPhones.length; i++) {
+    if (phones.indexOf(allPhones[i]) == -1) {
+      plotdata.push({ label: allPhones[i] + ' (no data)',
+                      data: [],
+                      color: '#dddddd',
+                      noData: true /* tmp variable */});
+    }
+  }
+
+  plotdata.sort(function (a, b) {
+    return String.localeCompare(a.label, b.label);
+  });
+
+  // Ensure each phone's colour stays the same when reloading data.
+  plotdata.forEach(function(val, i) {
+    if (val.noData) {
+      delete(val.noData);
+    } else {
+      val.color = i;
+    }
+  });
+
+  return { data: plotdata, revisions: revisions };
 }
 
 var testmap = {
@@ -54,14 +80,6 @@ var testmap = {
   'local-twitter': 'Local Twitter Page',
   'remote-blank': 'Remote Blank Page',
   'local-blank': 'Local Blank Page'
-};
-
-var phonemap = {
-  'galaxy_nexus': 'Galaxy Nexus',
-  'samsung_gs2': 'Samsung Galaxy SII',
-  'nexus_s': 'Nexus S',
-  'nexus_one': 'Nexus One',
-  'droid_pro': 'Droid Pro'
 };
 
 var productmap = {
@@ -72,10 +90,6 @@ var productmap = {
 
 function testDescr(testname) {
   return (testname in testmap) ? testmap[testname] : testname;
-}
-
-function phoneName(phoneid) {
-  return (phoneid in phonemap) ? phonemap[phoneid] : phoneid;
 }
 
 function productDescr(productname) {
@@ -99,7 +113,7 @@ function makePlot(params, data) {
     xaxis: { mode: 'time', axisLabel: 'build date', timeformat: '%b %d',
              tickSize: [1, 'day'] },
     yaxis: { min: 0, axisLabel: 'time (ms)' },
-    legend: { position: 'se' }
+    legend: { container: $('#legend'), hideable: true }
   });
 
   $('#plot').bind('plothover',
@@ -118,26 +132,20 @@ function makePlot(params, data) {
 function loadGraph() {
   var params = {};
   $.makeArray($('#controls select').each(function(i, e) { params[e.name] = e.value; }));
-  params.phone = [];
-  $.makeArray($('#phone input[type=checkbox]')).filter(function (x) { return $(x).attr('checked'); }).map(function (x) { params.phone.push($(x).attr('value')); });
-  if (!params.phone.length) {
-    $('#plot').html(ich.nodata());
-    return false;
-  }
   var hash = '#/' + params.product + '/' + params.metric + '/' + params.test +
-        '/' + params.phone.join('|') + '/' + $('#startdate').attr('value') +
+        '/' + $('#startdate').attr('value') +
         '/' + $('#enddate').attr('value');
   if (hash != document.location.hash) {
     document.location.hash = hash;
     return false;
   }
-  $.getJSON('api/s1s2/data/?product=' + params.product + '&metric=' + params.metric + '&test=' + params.test + params.phone.map(function (x) { return '&phone=' + x; }).join('') + '&start=' + $('#startdate').attr('value') + '&end=' + $('#enddate').attr('value'), function(data) {
+  $.getJSON('api/s1s2/data/?product=' + params.product + '&metric=' + params.metric + '&test=' + params.test + '&start=' + $('#startdate').attr('value') + '&end=' + $('#enddate').attr('value'), function(data) {
     makePlot(params, data);
   });
   return false;
 }
 
-function setControls(product, metric, test, phone, startdate, enddate) {
+function setControls(product, metric, test, startdate, enddate) {
   if (product) {
     $('#product option[value="' + product + '"]').attr('selected', true);
   }
@@ -146,10 +154,6 @@ function setControls(product, metric, test, phone, startdate, enddate) {
   }
   if (test) {
     $('#test option[value="' + test + '"]').attr('selected', true);
-  }
-  if (phone) {
-    var phones = phone.split('|');
-    $.makeArray($('#phone input[type=checkbox]')).map(function (x) { $(x).attr('checked', phones.indexOf($(x).attr('value')) != -1); });
   }
   if (!startdate) {
     $('#period option[value="7"]').attr('selected', true);
@@ -224,9 +228,6 @@ function main() {
           '/([^/]*)': {
             '/([^/]*)': {
               '/([^/]*)': {
-                '/([^/]*)': {
-                  on: setControls
-                },
                 on: setControls
               },
               on: setControls

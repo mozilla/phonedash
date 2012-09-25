@@ -33,7 +33,7 @@ elif SQL_TYPE == 'mysql':
     db = web.database(dbn=SQL_TYPE, user=SQL_USER, pw=SQL_PASSWD, db=SQL_DB)
     DATETIME = 'datetime'
     table_exists_query = db.select('information_schema.tables',
-                                   what='table_name', 
+                                   what='table_name',
                                    where='table_schema=$db and table_name=$name',
                                    vars={'db': SQL_DB, 'name': SQL_TABLE})
 

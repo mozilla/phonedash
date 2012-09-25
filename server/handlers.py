@@ -68,15 +68,14 @@ class S1S2RawFennecParameters(object):
 
 class S1S2RawFennecData(object):
 
-    metrics = { 'throbberstart': 'AVG(throbberstart-starttime)',
-                'throbberstop': 'AVG(throbberstop-starttime)',
-                'totaldrawing': 'AVG(enddrawing-starttime)' }
+    metrics = { 'throbberstart': 'throbberstart',
+                'throbberstop': 'throbberstop',
+                'totaldrawing': 'enddrawing' }
 
     @templeton.handlers.json_response
     def GET(self):
         query, body = templeton.handlers.get_request_parms()
         test = query['test'][0]
-        phoneids = query['phone']
         start = query['start'][0]
         # add one to the end date so we capture the full end day
         # e.g. if the user gives an end day of 2012-01-01, we want
@@ -86,38 +85,36 @@ class S1S2RawFennecData(object):
                timedelta(days=1)).strftime('%Y-%m-%d')
 
         metric = query['metric'][0]
+        metric_column = self.metrics[metric]
         product = query['product'][0]
 
         # results[phone][test][metric][blddate] = value
-        results = defaultdict(lambda: defaultdict(lambda: defaultdict(dict)))
-
-        revisions = [x['revision'] for x in autophonedb.db.query(
-            'select distinct revision from %s '
-            'where blddate >= $start and blddate < $end' %
-            autophonedb.SQL_TABLE,
-            vars=dict(start=start, end=end))]
+        results = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(dict))))
 
         data_validity_check = 'throbberstart>0'
-        if metric == 'throbberstop':
-          data_validity_check += ' and throbberstop>0'
-        elif metric == 'totaldrawing':
-          data_validity_check += ' and enddrawing>0'
+        if metric != 'throbberstart':
+          data_validity_check += ' and %s>0' % metric_column
 
-        for phoneid in phoneids:
-            for revision in revisions:
-                data = autophonedb.db.select(
-                  autophonedb.SQL_TABLE,
-                  what=self.metrics[metric] + ',blddate',
-                  where='phoneid=$phoneid and revision=$revision and testname=$test and productname=$product and ' + data_validity_check,
-                  vars=dict(phoneid=phoneid, revision=revision,
-                            test=test, product=product))[0]
-                avg = data[self.metrics[metric]]
-                blddate = data['blddate']
-                if not isinstance(blddate, datetime):
-                    blddate = datetime.strptime(blddate, '%Y-%m-%d %H:%M:%S')
-                if avg is None:
-                    continue
-                results[phoneid][test][metric][blddate.isoformat()] = {
-                  'value': float(avg),
-                  'revision': revision }
+        data = autophonedb.db.select(
+            autophonedb.SQL_TABLE,
+            what=self.metrics[metric] + ',starttime,blddate,revision,phoneid',
+            where='testname=$test and productname=$product and '
+            'blddate >= $start and blddate < $end and ' + data_validity_check,
+            vars=dict(test=test, product=product, start=start, end=end))
+
+        for d in data:
+            blddate = d['blddate']
+            if not isinstance(blddate, datetime):
+                blddate = datetime.strptime(blddate, '%Y-%m-%d %H:%M:%S')
+            r = results[d['phoneid']][test][metric][blddate.isoformat()]
+            if 'values' in r:
+                r['values'].append(d[self.metrics[metric]] - d['starttime'])
+            else:
+                r['values'] = [d[self.metrics[metric]] - d['starttime']]
+            if not 'revision' in r:
+                r['revision'] = d['revision']
+        for d in results.values():
+            for r in d[test][metric].values():
+                r['value'] = float(sum(r['values'])) / len(r['values'])
+                del r['values']
         return results
