@@ -42,7 +42,6 @@ class S1S2RawFennecAddResult():
                            starttime=r["data"]["starttime"],
                            throbberstart=r["data"]["throbberstart"],
                            throbberstop=r["data"]["throbberstop"],
-                           enddrawing=r["data"]["enddrawing"],
                            blddate=blddate.strftime("%Y-%m-%d %H:%M:%S"),
                            revision=r["data"]["revision"],
                            bldtype=r["data"]["bldtype"],
@@ -70,7 +69,7 @@ class S1S2RawFennecData(object):
 
     metrics = { 'throbberstart': 'throbberstart',
                 'throbberstop': 'throbberstop',
-                'totaldrawing': 'enddrawing' }
+                'totalthrobber': 'throbberstop-throbberstart' }
 
     @templeton.handlers.json_response
     def GET(self):
@@ -107,10 +106,14 @@ class S1S2RawFennecData(object):
             if not isinstance(blddate, datetime):
                 blddate = datetime.strptime(blddate, '%Y-%m-%d %H:%M:%S')
             r = results[d['phoneid']][test][metric][blddate.isoformat()]
-            if 'values' in r:
-                r['values'].append(d[self.metrics[metric]] - d['starttime'])
+            if metric == 'totalthrobber':
+                offsettime = 0
             else:
-                r['values'] = [d[self.metrics[metric]] - d['starttime']]
+                offsettime = d['starttime']
+            if 'values' in r:
+                r['values'].append(d[self.metrics[metric]] - offsettime)
+            else:
+                r['values'] = [d[self.metrics[metric]] - offsettime]
             if not 'revision' in r:
                 r['revision'] = d['revision']
         for d in results.values():

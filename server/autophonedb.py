@@ -44,7 +44,6 @@ if not table_exists_query:
             starttime INT UNSIGNED, \
             throbberstart INT UNSIGNED, \
             throbberstop INT UNSIGNED, \
-            enddrawing INT UNSIGNED, \
             blddate ' + DATETIME + ' NOT NULL, \
             revision VARCHAR(255),\
             bldtype CHAR(10),\
