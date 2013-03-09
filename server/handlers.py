@@ -13,6 +13,7 @@ import re
 import templeton
 import templeton.handlers
 import web
+from math import sqrt
 
 try:
   import json
@@ -20,6 +21,15 @@ except:
   import simplejson as json
 
 import autophonedb
+
+
+def get_mean_stddev(values):
+    count = len(values)
+    if count == 1:
+        return values[0], 0
+    mean = sum(values) / float(count)
+    stddev = sqrt(sum([(value - mean)**2 for value in values])/float(count-1))
+    return mean, stddev
 
 # "/api/" is automatically prepended to each of these
 urls = (
@@ -86,6 +96,8 @@ class S1S2RawFennecData(object):
         metric = query['metric'][0]
         metric_column = self.metrics[metric]
         product = query['product'][0]
+        errorbars = query['errorbars'][0] == 'errorbars'
+        initialonly = query['initialonly'][0] == 'initialonly'
 
         # results[phone][test][metric][blddate] = value
         results = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(dict))))
@@ -118,6 +130,9 @@ class S1S2RawFennecData(object):
                 r['revision'] = d['revision']
         for d in results.values():
             for r in d[test][metric].values():
-                r['value'] = float(sum(r['values'])) / len(r['values'])
+                if initialonly or len(r['values']) == 1:
+                    r['value'], r['stddev'] = r['values'][0], 0
+                else:
+                    r['value'], r['stddev'] = get_mean_stddev(r['values'][1:])
                 del r['values']
         return results

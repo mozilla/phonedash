@@ -53,12 +53,26 @@
 
             if (series.points.show) {
                 series.points.show = false;
+                if ('yerr' in series.points) {
+                    series.oldYerrShow = series.points.yerr.show
+                    series.points.yerr.show = false;
+                }
+                if ('xerr' in series.points) {
+                    series.oldXerrShow = series.points.xerr.show
+                    series.points.xerr.show = false;
+                }
                 series.lines.show = false;
                 series.label += labelHidden;
                 series.oldColor = series.color;
                 series.color = "#ddd";
             } else {
                 series.points.show = true;
+                if ('yerr' in series.points) {
+                    series.points.yerr.show = series.oldYerrShow
+                }
+                if ('xerr' in series.points) {
+                    series.points.xerr.show = series.oldXerrShow
+                }
                 series.lines.show = true;
                 series.label = series.label.replace(labelHidden, '');
                 series.color = series.oldColor;

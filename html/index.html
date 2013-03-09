@@ -17,6 +17,7 @@
     <script src="scripts/jquery.flot.min.js"></script>
     <script src="scripts/jquery.flot.axislabels.js"></script>
     <script src="scripts/jquery.flot.hiddengraphs.js"></script>
+    <script src="scripts/jquery.flot.errorbars.js"></script>
     <script src="scripts/ICanHaz.min.js"></script>
     <script src="scripts/plot.js"></script>
     <script src="scripts/app.js"></script>
@@ -43,6 +44,10 @@
           <option value="throbberstop">time to throbber stop</option>
           <option value="totalthrobber">total throbber time</option>
         </select>
+        <br />
+        Show error bars <input name="errorbars" id="errorbars" type="checkbox"  />
+        <br />
+        Show initial only <input name="initialonly" id="initialonly" type="checkbox" />
       </form>
       <form name="datecontrols" id="datecontrols">
         Date range:<br/>
@@ -73,7 +78,7 @@
 </script>
 
 <script type="text/html" id="flot_tooltip">
-  <div class="tooltip">{{ date }} (<a href="{{ url }}">{{ revision }}</a>): <b>{{ value }}</b></div>
+  <div class="tooltip">{{ date }} (<a href="{{ url }}">{{ revision }}</a>): <b>{{ value }}{{valueerr}}</b></div>
 </script>
 <!--------------------->
 

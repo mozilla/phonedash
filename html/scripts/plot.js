@@ -13,10 +13,11 @@ function dateStr(d) {
 }
 
 
-function showLineTooltip(x, y, timestamp, product, revision, value) {
+function showLineTooltip(x, y, timestamp, product, revision, value, valueerr) {
   var params = {
     date: new Date(Math.floor(timestamp)).toDateString(),
     value: Math.floor(value),
+    valueerr: '&plusmn;' + Math.floor(valueerr),
     revision: revision,
     url: ''
   };

@@ -41,7 +41,8 @@ function getDataPoints(data) {
           buildtime = new Date(builddate).getTime();
           revisions[buildtime] = data[phone][test][metric][builddate].revision;
           series.data.push([buildtime,
-                            data[phone][test][metric][builddate].value]);
+                            data[phone][test][metric][builddate].value,
+                            data[phone][test][metric][builddate].stddev]);
         }
       }
     }
@@ -107,7 +108,11 @@ function makePlot(params, data) {
   $.plot($('#plot'), points.data, {
     grid: { hoverable: true },
     series: {
-      points: { show: true },
+      points: {
+          show: true,
+          errorbars: 'y',
+          yerr: {show: $('#errorbars')[0].checked, upperCap: '-', lowerCap: '-'}
+      },
       lines: { show: true }
     },
     xaxis: { mode: 'time', axisLabel: 'build date', timeformat: '%b %d',
@@ -119,12 +124,14 @@ function makePlot(params, data) {
   $('#plot').bind('plothover',
     plotHover($('#plot'), function (item) {
       var y = item.datapoint[1];
+      var yerr = item.datapoint[2];
       showLineTooltip(item.pageX,
                       item.pageY,
                       item.datapoint[0],
                       params.product,
                       points.revisions[item.datapoint[0]],
-                      y);
+                      y,
+                      yerr);
     })
   );
 }
@@ -134,18 +141,20 @@ function loadGraph() {
   $.makeArray($('#controls select').each(function(i, e) { params[e.name] = e.value; }));
   var hash = '#/' + params.product + '/' + params.metric + '/' + params.test +
         '/' + $('#startdate').attr('value') +
-        '/' + $('#enddate').attr('value');
+        '/' + $('#enddate').attr('value') +
+        '/' + ($('#errorbars').attr('checked')?'errorbars':'noerrorbars') +
+        '/' + ($('#initialonly').attr('checked')?'initialonly':'notinitialonly');
   if (hash != document.location.hash) {
     document.location.hash = hash;
     return false;
   }
-  $.getJSON('api/s1s2/data/?product=' + params.product + '&metric=' + params.metric + '&test=' + params.test + '&start=' + $('#startdate').attr('value') + '&end=' + $('#enddate').attr('value'), function(data) {
+  $.getJSON('api/s1s2/data/?product=' + params.product + '&metric=' + params.metric + '&test=' + params.test + '&start=' + $('#startdate').attr('value') + '&end=' + $('#enddate').attr('value') + '&errorbars=' + ($('#errorbars').attr('checked')?'errorbars':'noerrorbars') + '&initialonly=' + ($('#initialonly').attr('checked')?'initialonly':'notinitialonly'), function(data) {
     makePlot(params, data);
   });
   return false;
 }
 
-function setControls(product, metric, test, startdate, enddate) {
+function setControls(product, metric, test, startdate, enddate, errorbars, initialonly) {
   if (product) {
     $('#product option[value="' + product + '"]').attr('selected', true);
   }
@@ -166,6 +175,12 @@ function setControls(product, metric, test, startdate, enddate) {
       $('#enddate').attr('value', ISODateString(new Date()));
     }
     dateChanged();
+  }
+  if (errorbars) {
+    $('#errorbars').attr('checked', errorbars == 'errorbars');
+  }
+  if (initialonly) {
+    $('#initialonly').attr('checked', initialonly == 'initialonly');
   }
 }
 
@@ -228,6 +243,12 @@ function main() {
           '/([^/]*)': {
             '/([^/]*)': {
               '/([^/]*)': {
+                '/([^/]*)': {
+                  '/([^/]*)': {
+                    on: setControls
+                  },
+                  on: setControls
+                },
                 on: setControls
               },
               on: setControls
