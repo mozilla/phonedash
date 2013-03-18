@@ -53,6 +53,7 @@ class S1S2RawFennecAddResult():
                            throbberstart=r["data"]["throbberstart"],
                            throbberstop=r["data"]["throbberstop"],
                            blddate=blddate.strftime("%Y-%m-%d %H:%M:%S"),
+                           cached=r["data"]["cached"],
                            revision=r["data"]["revision"],
                            bldtype=r["data"]["bldtype"],
                            productname=r["data"]["productname"],
@@ -96,6 +97,7 @@ class S1S2RawFennecData(object):
         metric = query['metric'][0]
         metric_column = self.metrics[metric]
         product = query['product'][0]
+        cached = query['cached'][0] == 'cached'
         errorbars = query['errorbars'][0] == 'errorbars'
         initialonly = query['initialonly'][0] == 'initialonly'
 
@@ -108,10 +110,10 @@ class S1S2RawFennecData(object):
 
         data = autophonedb.db.select(
             autophonedb.SQL_TABLE,
-            what=self.metrics[metric] + ',starttime,blddate,revision,phoneid',
+            what=self.metrics[metric] + ',starttime,blddate,revision,phoneid,cached',
             where='testname=$test and productname=$product and '
-            'blddate >= $start and blddate < $end and ' + data_validity_check,
-            vars=dict(test=test, product=product, start=start, end=end))
+            'blddate >= $start and blddate < $end and cached=$cached and ' + data_validity_check,
+            vars=dict(test=test, product=product, start=start, end=end, cached=cached))
 
         for d in data:
             blddate = d['blddate']

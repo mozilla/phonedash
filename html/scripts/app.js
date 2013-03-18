@@ -142,19 +142,20 @@ function loadGraph() {
   var hash = '#/' + params.product + '/' + params.metric + '/' + params.test +
         '/' + $('#startdate').attr('value') +
         '/' + $('#enddate').attr('value') +
+        '/' + ($('#cached').attr('checked')?'cached':'notcached') +
         '/' + ($('#errorbars').attr('checked')?'errorbars':'noerrorbars') +
         '/' + ($('#initialonly').attr('checked')?'initialonly':'notinitialonly');
   if (hash != document.location.hash) {
     document.location.hash = hash;
     return false;
   }
-  $.getJSON('api/s1s2/data/?product=' + params.product + '&metric=' + params.metric + '&test=' + params.test + '&start=' + $('#startdate').attr('value') + '&end=' + $('#enddate').attr('value') + '&errorbars=' + ($('#errorbars').attr('checked')?'errorbars':'noerrorbars') + '&initialonly=' + ($('#initialonly').attr('checked')?'initialonly':'notinitialonly'), function(data) {
+  $.getJSON('api/s1s2/data/?product=' + params.product + '&metric=' + params.metric + '&test=' + params.test + '&start=' + $('#startdate').attr('value') + '&end=' + $('#enddate').attr('value') + '&cached=' + ($('#cached').attr('checked')?'cached':'notcached') + '&errorbars=' + ($('#errorbars').attr('checked')?'errorbars':'noerrorbars') + '&initialonly=' + ($('#initialonly').attr('checked')?'initialonly':'notinitialonly'), function(data) {
     makePlot(params, data);
   });
   return false;
 }
 
-function setControls(product, metric, test, startdate, enddate, errorbars, initialonly) {
+function setControls(product, metric, test, startdate, enddate, cached, errorbars, initialonly) {
   if (product) {
     $('#product option[value="' + product + '"]').attr('selected', true);
   }
@@ -175,6 +176,9 @@ function setControls(product, metric, test, startdate, enddate, errorbars, initi
       $('#enddate').attr('value', ISODateString(new Date()));
     }
     dateChanged();
+  }
+  if (cached) {
+    $('#cached').attr('checked', cached == 'cached');
   }
   if (errorbars) {
     $('#errorbars').attr('checked', errorbars == 'errorbars');
@@ -245,6 +249,9 @@ function main() {
               '/([^/]*)': {
                 '/([^/]*)': {
                   '/([^/]*)': {
+                    '/([^/]*)': {
+                      on: setControls
+                    },
                     on: setControls
                   },
                   on: setControls
