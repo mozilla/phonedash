@@ -2,23 +2,13 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-from collections import defaultdict
-from datetime import date, datetime, timedelta
-import time
-from decimal import *
-import ConfigParser
-import csv
-import dateutil.parser
-import re
-import templeton
+import json
 import templeton.handlers
 import web
-from math import sqrt
 
-try:
-  import json
-except:
-  import simplejson as json
+from collections import defaultdict
+from datetime import datetime, timedelta
+from math import sqrt
 
 import autophonedb
 
@@ -33,9 +23,10 @@ def get_mean_stddev(values):
 
 # "/api/" is automatically prepended to each of these
 urls = (
- '/s1s2_add/?', "S1S2RawFennecAddResult",
- '/s1s2/info/?',"S1S2RawFennecParameters",
- '/s1s2/data/?', 'S1S2RawFennecData'
+    '/s1s2/add/?', 'S1S2RawFennecAddResult',
+    '/s1s2/info/?', 'S1S2RawFennecParameters',
+    '/s1s2/data/?', 'S1S2RawFennecData',
+    '/s1s2/delete/?', 'S1S2RawFennecDeleteResults'
 )
 
 class S1S2RawFennecAddResult():
@@ -61,6 +52,21 @@ class S1S2RawFennecAddResult():
                            osver=r["data"]["osver"],
                            machineID=r["data"]["machineid"],
                            runstamp=now.strftime("%Y-%m-%d %H:%M:%S"))
+
+
+class S1S2RawFennecDeleteResults(object):
+
+    def POST(self):
+        r = json.loads(web.data())
+        try:
+            vars = dict(revision=r['revision'],
+                        phoneid=r['phoneid'],
+                        bldtype=r['bldtype'])
+        except KeyError:
+            raise web.badrequest()
+        autophonedb.db.delete(autophonedb.SQL_TABLE,
+                              where='revision=$revision and phoneid=$phoneid '
+                              'and bldtype=$bldtype', vars=vars)
 
 
 class S1S2RawFennecParameters(object):
