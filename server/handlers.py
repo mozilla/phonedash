@@ -3,6 +3,7 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 import json
+import re
 import templeton.handlers
 import web
 
@@ -29,29 +30,33 @@ urls = (
     '/s1s2/delete/?', 'S1S2RawFennecDeleteResults'
 )
 
+def is_clean(s):
+    return bool(re.match('[\w\.-]+$', s))
+
+
 class S1S2RawFennecAddResult():
     @templeton.handlers.json_response
     def POST(self):
         r = json.loads(web.data())
-        print r
-        # Get our dates correct
-        blddate = datetime.fromtimestamp(float(r["data"]["blddate"]))
-        now = datetime.now()
-        autophonedb.db.insert(autophonedb.SQL_TABLE,
-                           phoneid=r["data"]["phoneid"],
-                           testname=r["data"]["testname"],
-                           starttime=r["data"]["starttime"],
-                           throbberstart=r["data"]["throbberstart"],
-                           throbberstop=r["data"]["throbberstop"],
-                           blddate=blddate.strftime("%Y-%m-%d %H:%M:%S"),
-                           cached=r["data"]["cached"],
-                           revision=r["data"]["revision"],
-                           bldtype=r["data"]["bldtype"],
-                           productname=r["data"]["productname"],
-                           productversion=r["data"]["productversion"],
-                           osver=r["data"]["osver"],
-                           machineID=r["data"]["machineid"],
-                           runstamp=now.strftime("%Y-%m-%d %H:%M:%S"))
+        result = {'runstamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
+
+        try:
+            result['starttime'] = int(r['data']['starttime'])
+            result['throbberstart'] = int(r['data']['throbberstart'])
+            result['throbberstop'] = int(r['data']['throbberstop'])
+            result['cached'] = int(r['data']['cached'])
+            result['blddate'] = datetime.fromtimestamp(
+                float(r["data"]["blddate"])).strftime("%Y-%m-%d %H:%M:%S")
+        except ValueError:
+            raise web.badrequest()
+
+        for key in ('phoneid', 'testname', 'revision', 'bldtype', 'productname',
+                    'productversion', 'osver', 'machineid'):
+            if not is_clean(r['data'][key]):
+                raise web.badrequest()
+            result[key] = r['data'][key]
+
+        autophonedb.db.insert(autophonedb.SQL_TABLE, **result)
 
 
 class S1S2RawFennecDeleteResults(object):
