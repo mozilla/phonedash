@@ -2,7 +2,9 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+import ConfigParser
 import json
+import jwt
 import re
 import templeton.handlers
 import web
@@ -14,14 +16,6 @@ from math import sqrt
 import autophonedb
 
 
-def get_mean_stddev(values):
-    count = len(values)
-    if count == 1:
-        return values[0], 0
-    mean = sum(values) / float(count)
-    stddev = sqrt(sum([(value - mean)**2 for value in values])/float(count-1))
-    return mean, stddev
-
 # "/api/" is automatically prepended to each of these
 urls = (
     '/s1s2/add/?', 'S1S2RawFennecAddResult',
@@ -30,6 +24,29 @@ urls = (
     '/s1s2/delete/?', 'S1S2RawFennecDeleteResults'
 )
 
+config = ConfigParser.ConfigParser()
+config.read('settings.cfg')
+
+try:
+    REQUIRE_SIGNED = config.getboolean('server', 'require_signed')
+except (ConfigParser.NoSectionError, ConfigParser.NoOptionError):
+    REQUIRE_SIGNED = False
+
+try:
+    CLIENT_KEYS = dict(config.items('client keys'))
+except ConfigParser.NoSectionError:
+    CLIENT_KEYS = {}
+
+
+def get_mean_stddev(values):
+    count = len(values)
+    if count == 1:
+        return values[0], 0
+    mean = sum(values) / float(count)
+    stddev = sqrt(sum([(value - mean)**2 for value in values])/float(count-1))
+    return mean, stddev
+
+
 def is_clean(s):
     return bool(re.match('[\w\.-]+$', s))
 
@@ -37,7 +54,22 @@ def is_clean(s):
 class S1S2RawFennecAddResult():
     @templeton.handlers.json_response
     def POST(self):
-        r = json.loads(web.data())
+        content_type = web.ctx.env.get('CONTENT_TYPE', '')
+        if content_type == 'application/jwt':
+            token = jwt.decode(web.data(),
+                               signers=[jwt.jws.HmacSha(keydict=CLIENT_KEYS)])
+            if not token['valid']:
+                print 'Bad signature from %s!  Ignoring results.' % \
+                    token['headers'].get('kid', '(unknown)')
+                raise web.badrequest('bad signature')
+            r = token['payload']
+        elif REQUIRE_SIGNED:
+            print 'Signature required but plain JSON received.  Ignoring ' \
+                'results.'
+            raise web.badrequest('signature required')
+        else:
+            r = json.loads(web.data())
+
         result = {'runstamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
 
         try:
