@@ -48,7 +48,7 @@ def get_mean_stddev(values):
 
 
 def is_clean(s):
-    return bool(re.match('[\w\.-]+$', s))
+    return bool(re.match('[\w\.\- ]+$', s))
 
 
 class S1S2RawFennecAddResult():
