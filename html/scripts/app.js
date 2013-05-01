@@ -27,7 +27,7 @@ function loadOptions(data) {
   }
 }
 
-function getDataPoints(data) {
+function getDataPoints(params, data) {
   var revisions = {}, plotdata = [], series = {}, phones = [];
   var i, phone, test, metric, builddate, buildtime;
   for (phone in data) {
@@ -40,9 +40,15 @@ function getDataPoints(data) {
         for (builddate in data[phone][test][metric]) {
           buildtime = new Date(builddate).getTime();
           revisions[buildtime] = data[phone][test][metric][builddate].revision;
+          if (params.errorbartype == 'standarderror') {
+            errorbarvalue = data[phone][test][metric][builddate].stderr
+          }
+          else {
+            errorbarvalue = data[phone][test][metric][builddate].stddev
+          }
           series.data.push([buildtime,
                             data[phone][test][metric][builddate].value,
-                            data[phone][test][metric][builddate].stddev]);
+                            errorbarvalue]);
         }
       }
     }
@@ -99,7 +105,7 @@ function productDescr(productname) {
 
 function makePlot(params, data) {
   $('#plot').html();
-  var points = getDataPoints(data);
+  var points = getDataPoints(params, data);
   if (!points.data.length) {
     $('#plot').html(ich.nodata());
     return;
@@ -144,18 +150,18 @@ function loadGraph() {
         '/' + $('#enddate').attr('value') +
         '/' + ($('#cached').attr('checked')?'cached':'notcached') +
         '/' + ($('#errorbars').attr('checked')?'errorbars':'noerrorbars') +
-        '/' + ($('#initialonly').attr('checked')?'initialonly':'notinitialonly');
+        '/' + params.errorbartype;
   if (hash != document.location.hash) {
     document.location.hash = hash;
     return false;
   }
-  $.getJSON('api/s1s2/data/?product=' + params.product + '&metric=' + params.metric + '&test=' + params.test + '&start=' + $('#startdate').attr('value') + '&end=' + $('#enddate').attr('value') + '&cached=' + ($('#cached').attr('checked')?'cached':'notcached') + '&errorbars=' + ($('#errorbars').attr('checked')?'errorbars':'noerrorbars') + '&initialonly=' + ($('#initialonly').attr('checked')?'initialonly':'notinitialonly'), function(data) {
+  $.getJSON('api/s1s2/data/?product=' + params.product + '&metric=' + params.metric + '&test=' + params.test + '&start=' + $('#startdate').attr('value') + '&end=' + $('#enddate').attr('value') + '&cached=' + ($('#cached').attr('checked')?'cached':'notcached') + '&errorbars=' + ($('#errorbars').attr('checked')?'errorbars':'noerrorbars') + '&errorbartype=' + params.errorbartype, function(data) {
     makePlot(params, data);
   });
   return false;
 }
 
-function setControls(product, metric, test, startdate, enddate, cached, errorbars, initialonly) {
+function setControls(product, metric, test, startdate, enddate, cached, errorbars, errorbartype) {
   if (product) {
     $('#product option[value="' + product + '"]').attr('selected', true);
   }
@@ -183,8 +189,8 @@ function setControls(product, metric, test, startdate, enddate, cached, errorbar
   if (errorbars) {
     $('#errorbars').attr('checked', errorbars == 'errorbars');
   }
-  if (initialonly) {
-    $('#initialonly').attr('checked', initialonly == 'initialonly');
+  if (errorbartype) {
+    $('#errorbartype option[value="' + errorbartype + '"]').attr('selected', true);
   }
 }
 

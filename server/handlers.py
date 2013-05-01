@@ -38,13 +38,22 @@ except ConfigParser.NoSectionError:
     CLIENT_KEYS = {}
 
 
-def get_mean_stddev(values):
-    count = len(values)
-    if count == 1:
-        return values[0], 0
-    mean = sum(values) / float(count)
-    stddev = sqrt(sum([(value - mean)**2 for value in values])/float(count-1))
-    return mean, stddev
+def get_stats(values):
+    """Calculate and return an object containing the count, mean,
+    standard deviation, standard error of the mean and percentage
+    standard error of the mean of the values list."""
+    r = {'count': len(values)}
+    if r['count'] == 1:
+        r['mean'] = values[0]
+        r['stddev'] = 0
+        r['stderr'] = 0
+        r['stderrp'] = 0
+    else:
+        r['mean'] = sum(values) / float(r['count'])
+        r['stddev'] = sqrt(sum([(value - r['mean'])**2 for value in values])/float(r['count']-1))
+        r['stderr'] = r['stddev']/sqrt(r['count'])
+        r['stderrp'] = 100.0*r['stderr']/float(r['mean'])
+    return r
 
 
 def is_clean(s):
@@ -142,7 +151,7 @@ class S1S2RawFennecData(object):
         product = query['product'][0]
         cached = query['cached'][0] == 'cached'
         errorbars = query['errorbars'][0] == 'errorbars'
-        initialonly = query['initialonly'][0] == 'initialonly'
+        errorbartype = query['errorbartype'][0]
 
         # results[phone][test][metric][blddate] = value
         results = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(dict))))
@@ -175,9 +184,14 @@ class S1S2RawFennecData(object):
                 r['revision'] = d['revision']
         for d in results.values():
             for r in d[test][metric].values():
-                if initialonly or len(r['values']) == 1:
-                    r['value'], r['stddev'] = r['values'][0], 0
+                if len(r['values']) == 1:
+                    r['value'] = r['values'][0]
+                    r['stddev'] = 0
+                    r['stderr'] = 0
                 else:
-                    r['value'], r['stddev'] = get_mean_stddev(r['values'][1:])
+                    stats = get_stats(r['values'])
+                    r['value'] = stats['mean']
+                    r['stddev'] = stats['stddev']
+                    r['stderr'] = stats['stderr']
                 del r['values']
         return results

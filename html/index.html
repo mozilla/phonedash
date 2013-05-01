@@ -49,7 +49,10 @@
         <br />
         Show error bars <input name="errorbars" id="errorbars" type="checkbox"  />
         <br />
-        Show initial only <input name="initialonly" id="initialonly" type="checkbox" />
+        <select name="errorbartype" id="errorbartype">
+          <option value="standarderror" selected>Standard Error</option>
+          <option value="standarddeviation">Standard Deviation</option>
+        </select>
       </form>
       <form name="datecontrols" id="datecontrols">
         Date range:<br/>
