@@ -35,12 +35,12 @@ function showLineTooltip(x, y, timestamp, product, revision, value, valueerr) {
 
 
 // calls toolTipFn when we detect that the current selection has changed
-function plotHover(selector, toolTipFn) {
+function plotClick(selector, toolTipFn) {
   return function(event, pos, item) {
     var previousPoint = null;
     var prevX = 0;
     var prevY = 0;
-    selector.bind('plothover', function (event, pos, item) {
+    selector.bind('plotclick', function (event, pos, item) {
       if (item) {
         if (previousPoint != item.datapoint) {
           previousPoint = item.datapoint;

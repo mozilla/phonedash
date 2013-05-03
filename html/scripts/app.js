@@ -112,7 +112,7 @@ function makePlot(params, data) {
   }
   
   $.plot($('#plot'), points.data, {
-    grid: { hoverable: true },
+    grid: { clickable: true },
     series: {
       points: {
           show: true,
@@ -127,8 +127,8 @@ function makePlot(params, data) {
     legend: { container: $('#legend'), hideable: true }
   });
 
-  $('#plot').bind('plothover',
-    plotHover($('#plot'), function (item) {
+  $('#plot').bind('plotclick',
+    plotClick($('#plot'), function (item) {
       var y = item.datapoint[1];
       var yerr = item.datapoint[2];
       showLineTooltip(item.pageX,
