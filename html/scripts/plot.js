@@ -36,28 +36,27 @@ function showLineTooltip(x, y, timestamp, product, revision, value, valueerr) {
 
 // calls toolTipFn when we detect that the current selection has changed
 function plotClick(selector, toolTipFn) {
+  var previousPoint = null;
+  var prevX = 0;
+  var prevY = 0;
   return function(event, pos, item) {
-    var previousPoint = null;
-    var prevX = 0;
-    var prevY = 0;
-    selector.bind('plotclick', function (event, pos, item) {
-      if (item) {
-        if (previousPoint != item.datapoint) {
-          previousPoint = item.datapoint;
-          prevX = pos.pageX;
-          prevY = pos.pageY;
-          $('.tooltip').remove();
-          toolTipFn(item);
-        }
-      } else {
-        if (previousPoint) {
-          if (pos.pageX < (prevX - 5) || pos.pageX > (prevX + 10 + $('.tooltip').width()) ||
-              pos.pageY < (prevY - 5) || pos.pageY > (prevY + 10 + $('.tooltip').height())) {
-            $('.tooltip').remove();
-            previousPoint = null;
-          }
-        }
+    if (item) {
+      if (previousPoint != item.datapoint) {
+        previousPoint = item.datapoint;
+        prevX = pos.pageX;
+        prevY = pos.pageY;
+        $('.tooltip').remove();
+        toolTipFn(item);
       }
-    });
+    } else {
+      if (previousPoint &&
+          (pos.pageX < (prevX - 5) ||
+           pos.pageX > (prevX + 10 + $('.tooltip').width()) ||
+           pos.pageY < (prevY - 5) ||
+           pos.pageY > (prevY + 10 + $('.tooltip').height()))) {
+        $('.tooltip').remove();
+        previousPoint = null;
+      }
+    }
   };
 }
