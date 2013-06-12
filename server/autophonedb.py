@@ -27,7 +27,10 @@ if SQL_TYPE == 'sqlite':
                                    vars={'name': SQL_TABLE})
 elif SQL_TYPE == 'mysql':
     SQL_SERVER = config.get('database', 'SQL_SERVER')
-    SQL_PASSWD = config.get('database', 'SQL_PASSWD')
+    try:
+        SQL_PASSWD = config.get('database', 'SQL_PASSWD')
+    except ConfigParser.NoOptionError:
+        SQL_PASSWD = ''
     SQL_USER = config.get('database', 'SQL_USER')
     SQL_DB = config.get('database', 'SQL_DB')
     db = web.database(dbn=SQL_TYPE, user=SQL_USER, pw=SQL_PASSWD, db=SQL_DB)

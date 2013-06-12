@@ -1,4 +1,4 @@
 -e git://github.com/markrcote/jwt.git#egg=jwt
+mysql-python
 templeton
 python-dateutil
-
