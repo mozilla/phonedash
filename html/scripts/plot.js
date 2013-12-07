@@ -15,7 +15,7 @@ function dateStr(d) {
 
 function showLineTooltip(x, y, timestamp, product, revision, value, valueerr) {
   var params = {
-    date: new Date(Math.floor(timestamp)).toDateString(),
+    date: dateStr(new Date(Math.floor(timestamp))),
     value: Math.floor(value),
     valueerr: '&plusmn;' + Math.floor(valueerr),
     revision: revision,
