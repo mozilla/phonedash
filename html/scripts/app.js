@@ -121,7 +121,7 @@ function makePlot(params, data) {
       },
       lines: { show: true }
     },
-    xaxis: { mode: 'time', axisLabel: 'build date', timeformat: '%b %d',
+    xaxis: { mode: 'time', timezone: 'America/Los_Angeles', axisLabel: 'build date', timeformat: '%b %d',
              tickSize: [1, 'day'] },
     yaxis: { min: 0, axisLabel: 'time (ms)' },
     legend: { container: $('#legend'), hideable: true }
@@ -196,9 +196,9 @@ function setControls(product, metric, test, startdate, enddate, cached, errorbar
 
 function ISODateString(d) {
   function pad(n) { return n < 10 ? '0' + n : n; }
-  return d.getUTCFullYear() + '-'
-         + pad(d.getUTCMonth() + 1) + '-'
-         + pad(d.getUTCDate());
+  return d.getFullYear() + '-'
+         + pad(d.getMonth() + 1) + '-'
+         + pad(d.getDate());
 }
 
 function periodChanged() {

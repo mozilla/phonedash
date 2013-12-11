@@ -2,14 +2,20 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this file,
  * You can obtain one at http://mozilla.org/MPL/2.0/. */
 
+$(function() {
+  timezoneJS.timezone.zoneFileBasePath = "scripts/flot/tz";
+  timezoneJS.timezone.defaultZoneFile = [];
+  timezoneJS.timezone.init({async: false});
+});
+
 function dateStr(d) {
-  function pad(n) { return n < 10 ? '0' + n : n; }  
-  return d.getUTCFullYear() +
-    '-' + pad(d.getUTCMonth() + 1) +
-    '-' + pad(d.getUTCDate()) +
-    ' ' + pad(d.getUTCHours()) +
-    ':' + pad(d.getUTCMinutes()) +
-    ':' + pad(d.getUTCSeconds());
+  function pad(n) { return n < 10 ? '0' + n : n; }
+  return d.getFullYear() +
+    '-' + pad(d.getMonth() + 1) +
+    '-' + pad(d.getDate()) +
+    ' ' + pad(d.getHours()) +
+    ':' + pad(d.getMinutes()) +
+    ':' + pad(d.getSeconds());
 }
 
 
