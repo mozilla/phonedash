@@ -10,6 +10,7 @@ $(function() {
 
 function dateStr(d) {
   function pad(n) { return n < 10 ? '0' + n : n; }
+  d = new timezoneJS.Date(d, 'America/Los_Angeles');
   return d.getFullYear() +
     '-' + pad(d.getMonth() + 1) +
     '-' + pad(d.getDate()) +

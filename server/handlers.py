@@ -5,6 +5,7 @@
 import ConfigParser
 import json
 import jwt
+import pytz
 import re
 import templeton.handlers
 import web
@@ -15,6 +16,8 @@ from math import sqrt
 
 import autophonedb
 
+tz_utc = pytz.timezone('UTC')
+tz_pac = pytz.timezone('America/Los_Angeles')
 
 # "/api/" is automatically prepended to each of these
 urls = (
@@ -79,14 +82,15 @@ class S1S2RawFennecAddResult():
         else:
             r = json.loads(web.data())
 
-        result = {'runstamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
+        # All dates/datetimes are stored in UTC
+        result = {'runstamp': datetime.now(tz_utc).strftime("%Y-%m-%d %H:%M:%S")}
 
         try:
             result['starttime'] = int(r['data']['starttime'])
             result['throbberstart'] = int(r['data']['throbberstart'])
             result['throbberstop'] = int(r['data']['throbberstop'])
             result['cached'] = int(r['data']['cached'])
-            result['blddate'] = datetime.fromtimestamp(
+            result['blddate'] = datetime.utcfromtimestamp(
                 float(r["data"]["blddate"])).strftime("%Y-%m-%d %H:%M:%S")
         except ValueError:
             raise web.badrequest()
@@ -138,13 +142,25 @@ class S1S2RawFennecData(object):
     def GET(self):
         query, body = templeton.handlers.get_request_parms()
         test = query['test'][0]
-        start = query['start'][0]
-        # add one to the end date so we capture the full end day
+        # query dates are in America/Los_Angeles timezone.
+        # convert them to datetime values in tz_pac.
+        startdate = datetime.strptime(query['start'][0], '%Y-%m-%d')
+        enddate = datetime.strptime(query['end'][0], '%Y-%m-%d')
+        startdate = startdate.replace(tzinfo=tz_pac)
+        enddate = enddate.replace(tzinfo=tz_pac)
+        startdate = tz_pac.localize(startdate)
+        enddate = tz_pac.localize(enddate)
+        # convert the datetimes to utc.
+        startdate = startdate.astimezone(tz_utc)
+        enddate = enddate.astimezone(tz_utc)
+        # add one day to the end datedate so we capture the full end day.
         # e.g. if the user gives an end day of 2012-01-01, we want
         # everything on that day, so really we want everything before
         # 2012-01-02.
-        end = (datetime.strptime(query['end'][0], '%Y-%m-%d').date() +
-               timedelta(days=1)).strftime('%Y-%m-%d')
+        enddate = enddate + timedelta(days=1)
+        # get the isoformat of the full datetimes
+        start = startdate.isoformat(' ')[0:-6]
+        end = enddate.isoformat(' ')[0:-6]
 
         metric = query['metric'][0]
         metric_column = self.metrics[metric]

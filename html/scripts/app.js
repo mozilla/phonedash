@@ -3,6 +3,14 @@
  * You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 var allPhones = [];
+var MountainView = 'America/Los_Angeles';
+
+function makeMountainViewDate(s) {
+  if (!s) {
+    s = new Date();
+  }
+  return new timezoneJS.Date(s, MountainView);
+}
 
 function loadOptions(data) {
   var i;
@@ -38,7 +46,9 @@ function getDataPoints(params, data) {
     for (test in data[phone]) {
       for (metric in data[phone][test]) {
         for (builddate in data[phone][test][metric]) {
-          buildtime = new Date(builddate).getTime();
+          // The builddate stored in phonedash is in UTC.
+          // Force it to be parsed as UTC.
+          buildtime = makeMountainViewDate(builddate + '+00:00').getTime();
           revisions[buildtime] = data[phone][test][metric][builddate].revision;
           if (params.errorbartype == 'standarderror') {
             errorbarvalue = data[phone][test][metric][builddate].stderr
@@ -121,7 +131,7 @@ function makePlot(params, data) {
       },
       lines: { show: true }
     },
-    xaxis: { mode: 'time', timezone: 'America/Los_Angeles', axisLabel: 'build date', timeformat: '%b %d',
+    xaxis: { mode: 'time', timezone: MountainView, axisLabel: 'build date', timeformat: '%b %d',
              tickSize: [1, 'day'] },
     yaxis: { min: 0, axisLabel: 'time (ms)' },
     legend: { container: $('#legend'), hideable: true }
@@ -143,11 +153,21 @@ function makePlot(params, data) {
 }
 
 function loadGraph() {
+  function pad(n) { return n < 10 ? '0' + n : n; }
   var params = {};
   $.makeArray($('#controls select').each(function(i, e) { params[e.name] = e.value; }));
+  // create a MountainView date and get its timezone offset in minutes
+  var tzoffset = makeMountainViewDate().getTimezoneOffset();
+  // create the timezone string for MountainView date to force input to be parsed as MountainView.
+  var tzhours = Math.floor(Math.abs(tzoffset)/60);
+  var tzminutes = Math.abs(tzoffset) - 60*tzhours;
+  var tzstring = 'T00:00:00' + (tzoffset < 0 ? '+' : '-') + pad(tzhours) + ':' + pad(tzminutes);
+  var startdatestr = ISODateString(new Date($('#startdate').attr('value') + tzstring));
+  var enddatestr = ISODateString(new Date($('#enddate').attr('value') + tzstring));
+
   var hash = '#/' + params.product + '/' + params.metric + '/' + params.test +
-        '/' + $('#startdate').attr('value') +
-        '/' + $('#enddate').attr('value') +
+        '/' + startdatestr +
+        '/' + enddatestr +
         '/' + ($('#cached').attr('checked')?'cached':'notcached') +
         '/' + ($('#errorbars').attr('checked')?'errorbars':'noerrorbars') +
         '/' + params.errorbartype;
@@ -155,9 +175,16 @@ function loadGraph() {
     document.location.hash = hash;
     return false;
   }
-  $.getJSON('api/s1s2/data/?product=' + params.product + '&metric=' + params.metric + '&test=' + params.test + '&start=' + $('#startdate').attr('value') + '&end=' + $('#enddate').attr('value') + '&cached=' + ($('#cached').attr('checked')?'cached':'notcached') + '&errorbars=' + ($('#errorbars').attr('checked')?'errorbars':'noerrorbars') + '&errorbartype=' + params.errorbartype, function(data) {
-    makePlot(params, data);
-  });
+  $.getJSON('api/s1s2/data/?product=' + params.product +
+            '&metric=' + params.metric +
+            '&test=' + params.test +
+            '&start=' + startdatestr +
+            '&end=' + enddatestr +
+            '&cached=' + ($('#cached').attr('checked')?'cached':'notcached') +
+            '&errorbars=' + ($('#errorbars').attr('checked')?'errorbars':'noerrorbars') +
+            '&errorbartype=' + params.errorbartype,
+            function(data) { makePlot(params, data); }
+           );
   return false;
 }
 
@@ -179,7 +206,7 @@ function setControls(product, metric, test, startdate, enddate, cached, errorbar
     if (enddate) {
       $('#enddate').attr('value', enddate);
     } else {
-      $('#enddate').attr('value', ISODateString(new Date()));
+      $('#enddate').attr('value', ISODateString(makeMountainViewDate()));
     }
     dateChanged();
   }
@@ -206,9 +233,9 @@ function periodChanged() {
   if (!period) {
     return false;
   }
-  var endDate = new Date();
+  var endDate = makeMountainViewDate();
   $('#enddate').attr('value', ISODateString(endDate));
-  var startDate = new Date(endDate);
+  var startDate = makeMountainViewDate(endDate);
   startDate.setDate(startDate.getDate() - period);
   $('#startdate').attr('value', ISODateString(startDate));
   loadGraph();
@@ -217,8 +244,8 @@ function periodChanged() {
 
 function dateChanged() {
   $('#period option[value="0"]').attr('selected', true);
-  if (ISODateString(new Date()) == $('#enddate').attr('value')) {
-    var period = $('#period option[value="' + (new Date($('#enddate').attr('value')) - new Date($('#startdate').attr('value')))/(24*60*60*1000) + '"]');
+  if (ISODateString(makeMountainViewDate()) == $('#enddate').attr('value')) {
+    var period = $('#period option[value="' + (makeMountainViewDate($('#enddate').attr('value')) - makeMountainViewDate($('#startdate').attr('value')))/(24*60*60*1000) + '"]');
     if (period.length) {
       period.attr('selected', true);
     }
