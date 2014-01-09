@@ -60,7 +60,7 @@ def get_stats(values):
 
 
 def is_clean(s):
-    return bool(re.match('[\w\.\- ]+$', s))
+    return bool(re.match('(https?://)?[/\w\.\- ]+$', s))
 
 
 class S1S2RawFennecAddResult():
@@ -146,8 +146,6 @@ class S1S2RawFennecData(object):
         # convert them to datetime values in tz_pac.
         startdate = datetime.strptime(query['start'][0], '%Y-%m-%d')
         enddate = datetime.strptime(query['end'][0], '%Y-%m-%d')
-        startdate = startdate.replace(tzinfo=tz_pac)
-        enddate = enddate.replace(tzinfo=tz_pac)
         startdate = tz_pac.localize(startdate)
         enddate = tz_pac.localize(enddate)
         # convert the datetimes to utc.

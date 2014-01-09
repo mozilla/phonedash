@@ -21,17 +21,20 @@ function dateStr(d) {
 
 
 function showLineTooltip(x, y, timestamp, product, revision, value, valueerr) {
+  var revisonid = null;
+  var revision_captures =  /.*\/([^\/]+\/rev\/.*)/.exec(revision);
+  if (revision_captures) {
+    revisionid = revision_captures[1];
+  }
+
   var params = {
     date: dateStr(new Date(Math.floor(timestamp))),
     value: Math.floor(value),
     valueerr: '&plusmn;' + Math.floor(valueerr),
-    revision: revision,
+    revision: revisionid,
     url: ''
   };
-  if (product == 'org.mozilla.fennec') {
-    params.url = 'https://hg.mozilla.org/mozilla-central/rev/';
-  }
-  params.url += revision;
+  params.url = revision;
   var content = ich.flot_tooltip(params);
 
   $(content).css({

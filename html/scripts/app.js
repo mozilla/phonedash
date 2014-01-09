@@ -37,33 +37,51 @@ function loadOptions(data) {
 
 function getDataPoints(params, data) {
   var revisions = {}, plotdata = [], series = {}, phones = [];
-  var i, phone, test, metric, builddate, buildtime;
+  var i, phone, test, metric, builddate, buildtime, repo;
+  var phoneData, testData, metricData, buildData, revision, repoCaptures;
+  var reRepo = new RegExp('.*/([^/]+)/rev/.*');
   for (phone in data) {
+    phoneData = data[phone];
     phones.push(phone);
     series = {};
-    series.label = phone;
-    series.data = [];
-    for (test in data[phone]) {
-      for (metric in data[phone][test]) {
-        for (builddate in data[phone][test][metric]) {
+    for (test in phoneData) {
+      testData = phoneData[test];
+      for (metric in testData) {
+        metricData = testData[metric];
+        for (builddate in metricData) {
+          buildData = metricData[builddate];
           // The builddate stored in phonedash is in UTC.
           // Force it to be parsed as UTC.
+          revision = buildData.revision;
           buildtime = makeMountainViewDate(builddate + '+00:00').getTime();
-          revisions[buildtime] = data[phone][test][metric][builddate].revision;
+          repoCaptures = reRepo.exec(revision);
+          if (repoCaptures) {
+            repo = repoCaptures[1];
+          } else {
+            repo = 'unknown';
+          }
+          revisions[repo + buildtime] = buildData.revision;
           if (params.errorbartype == 'standarderror') {
-            errorbarvalue = data[phone][test][metric][builddate].stderr
+            errorbarvalue = buildData.stderr;
+          } else {
+            errorbarvalue = buildData.stddev;
           }
-          else {
-            errorbarvalue = data[phone][test][metric][builddate].stddev
+          if (!(repo in series)) {
+            series[repo] = {};
+            series[repo].repo = repo;
+            series[repo].label = phone + ' ' + repo;
+            series[repo].data = [];
           }
-          series.data.push([buildtime,
-                            data[phone][test][metric][builddate].value,
-                            errorbarvalue]);
+          series[repo].data.push([buildtime,
+                                  buildData.value,
+                                  errorbarvalue]);
         }
       }
     }
-    series.data.sort(function(a, b) { return a[0] - b[0]; });
-    plotdata.push(series);
+    for (repo in series) {
+      series[repo].data.sort(function(a, b) { return a[0] - b[0]; });
+      plotdata.push(series[repo]);
+    }
   }
 
   // Include phones with no data in legend and mark them appropriately.
@@ -132,7 +150,7 @@ function makePlot(params, data) {
       lines: { show: true }
     },
     xaxis: { mode: 'time', timezone: MountainView, axisLabel: 'build date', timeformat: '%b %d',
-             tickSize: [1, 'day'] },
+             minTickSize: [1, 'day'] },
     yaxis: { min: 0, axisLabel: 'time (ms)' },
     legend: { container: $('#legend'), hideable: true }
   });
@@ -145,7 +163,7 @@ function makePlot(params, data) {
                       item.pageY,
                       item.datapoint[0],
                       params.product,
-                      points.revisions[item.datapoint[0]],
+                      points.revisions[item.series.repo + item.datapoint[0]],
                       y,
                       yerr);
     })
