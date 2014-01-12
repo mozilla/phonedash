@@ -21,17 +21,17 @@ function dateStr(d) {
 
 
 function showLineTooltip(x, y, timestamp, product, revision, value, valueerr) {
-  var revisonid = null;
-  var revision_captures =  /.*\/([^\/]+\/rev\/.*)/.exec(revision);
-  if (revision_captures) {
-    revisionid = revision_captures[1];
+  var revisionId = null;
+  var revisionCaptures =  /.*\/([^\/]+\/rev\/.*)/.exec(revision);
+  if (revisionCaptures) {
+    revisionId = revisionCaptures[1];
   }
 
   var params = {
     date: dateStr(new Date(Math.floor(timestamp))),
     value: Math.floor(value),
     valueerr: '&plusmn;' + Math.floor(valueerr),
-    revision: revisionid,
+    revision: revisionId,
     url: ''
   };
   params.url = revision;
