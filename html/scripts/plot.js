@@ -20,7 +20,7 @@ function dateStr(d) {
 }
 
 
-function showLineTooltip(x, y, timestamp, product, revision, value, valueerr) {
+function showLineTooltip(x, y, timestamp, product, phone, revision, value, valueerr) {
   var revisionId = null;
   var revisionCaptures =  /.*\/([^\/]+\/rev\/.*)/.exec(revision);
   if (revisionCaptures) {
@@ -31,6 +31,7 @@ function showLineTooltip(x, y, timestamp, product, revision, value, valueerr) {
     date: dateStr(new Date(Math.floor(timestamp))),
     value: Math.floor(value),
     valueerr: '&plusmn;' + Math.floor(valueerr),
+    phone: phone,
     revision: revisionId,
     url: ''
   };

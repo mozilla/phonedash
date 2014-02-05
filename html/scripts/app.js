@@ -68,6 +68,7 @@ function getDataPoints(params, data) {
           }
           if (!(repo in series)) {
             series[repo] = {};
+            series[repo].phone = phone;
             series[repo].repo = repo;
             series[repo].label = phone + ' ' + repo;
             series[repo].data = [];
@@ -163,6 +164,7 @@ function makePlot(params, data) {
                       item.pageY,
                       item.datapoint[0],
                       params.product,
+                      item.series.phone,
                       points.revisions[item.series.repo + item.datapoint[0]],
                       y,
                       yerr);
