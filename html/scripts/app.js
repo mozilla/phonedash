@@ -72,10 +72,13 @@ function getDataPoints(params, data) {
             series[repo].repo = repo;
             series[repo].label = phone + ' ' + repo;
             series[repo].data = [];
+            series[repo].counts = [];
           }
+          count = buildData.count;
           series[repo].data.push([buildtime,
                                   buildData.value,
                                   errorbarvalue]);
+          series[repo].counts.push(count);
         }
       }
     }
@@ -139,7 +142,7 @@ function makePlot(params, data) {
     $('#plot').html(ich.nodata());
     return;
   }
-  
+
   $.plot($('#plot'), points.data, {
     grid: { clickable: true },
     series: {
@@ -167,7 +170,8 @@ function makePlot(params, data) {
                       item.series.phone,
                       points.revisions[item.series.repo + item.datapoint[0]],
                       y,
-                      yerr);
+                      yerr,
+                      item.series.counts[item.dataIndex]);
     })
   );
 }
@@ -186,6 +190,7 @@ function loadGraph() {
   var enddatestr = ISODateString(new Date($('#enddate').attr('value') + tzstring));
 
   var hash = '#/' + params.product + '/' + params.metric + '/' + params.test +
+        '/' + ($('#rejected').attr('checked')?'rejected':'norejected') +
         '/' + startdatestr +
         '/' + enddatestr +
         '/' + ($('#cached').attr('checked')?'cached':'notcached') +
@@ -198,6 +203,7 @@ function loadGraph() {
   $.getJSON('api/s1s2/data/?product=' + params.product +
             '&metric=' + params.metric +
             '&test=' + params.test +
+            '&rejected=' + ($('#rejected').attr('checked')?'rejected':'norejected') +
             '&start=' + startdatestr +
             '&end=' + enddatestr +
             '&cached=' + ($('#cached').attr('checked')?'cached':'notcached') +
@@ -208,7 +214,7 @@ function loadGraph() {
   return false;
 }
 
-function setControls(product, metric, test, startdate, enddate, cached, errorbars, errorbartype) {
+function setControls(product, metric, test, rejected, startdate, enddate, cached, errorbars, errorbartype) {
   if (product) {
     $('#product option[value="' + product + '"]').attr('selected', true);
   }
@@ -217,6 +223,9 @@ function setControls(product, metric, test, startdate, enddate, cached, errorbar
   }
   if (test) {
     $('#test option[value="' + test + '"]').attr('selected', true);
+  }
+  if (rejected) {
+    $('#rejected').attr('checked', rejected == 'rejected');
   }
   if (!startdate) {
     $('#period option[value="7"]').attr('selected', true);
@@ -303,7 +312,9 @@ function main() {
                 '/([^/]*)': {
                   '/([^/]*)': {
                     '/([^/]*)': {
-                      on: setControls
+                      '/([^/]*)': {
+                        on: setControls
+                      },
                     },
                     on: setControls
                   },

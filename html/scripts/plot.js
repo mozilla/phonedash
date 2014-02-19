@@ -20,7 +20,7 @@ function dateStr(d) {
 }
 
 
-function showLineTooltip(x, y, timestamp, product, phone, revision, value, valueerr) {
+function showLineTooltip(x, y, timestamp, product, phone, revision, value, valueerr, count) {
   var revisionId = null;
   var revisionCaptures =  /.*\/([^\/]+\/rev\/.*)/.exec(revision);
   if (revisionCaptures) {
@@ -33,7 +33,8 @@ function showLineTooltip(x, y, timestamp, product, phone, revision, value, value
     valueerr: '&plusmn;' + Math.floor(valueerr),
     phone: phone,
     revision: revisionId,
-    url: ''
+    url: '',
+    count: count
   };
   params.url = revision;
   var content = ich.flot_tooltip(params);

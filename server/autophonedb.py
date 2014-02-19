@@ -55,6 +55,7 @@ if not table_exists_query:
             productversion CHAR(25),\
             osver CHAR(25),\
             machineID CHAR(25),\
+            rejected BOOLEAN, \
             runstamp ' + DATETIME
 
     if SQL_TYPE == 'mysql':

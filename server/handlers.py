@@ -22,9 +22,11 @@ tz_pac = pytz.timezone('America/Los_Angeles')
 # "/api/" is automatically prepended to each of these
 urls = (
     '/s1s2/add/?', 'S1S2RawFennecAddResult',
+    '/s1s2/check/?', 'S1S2RawFennecCheckResult',
     '/s1s2/info/?', 'S1S2RawFennecParameters',
     '/s1s2/data/?', 'S1S2RawFennecData',
-    '/s1s2/delete/?', 'S1S2RawFennecDeleteResults'
+    '/s1s2/delete/?', 'S1S2RawFennecDeleteResults',
+    '/s1s2/reject/?', 'S1S2RawFennecRejectResults'
 )
 
 config = ConfigParser.ConfigParser()
@@ -53,7 +55,7 @@ def get_stats(values):
         r['stderrp'] = 0
     else:
         r['mean'] = sum(values) / float(r['count'])
-        r['stddev'] = sqrt(sum([(value - r['mean'])**2 for value in values])/float(r['count']-1))
+        r['stddev'] = sqrt(sum([(value - r['mean'])**2 for value in values])/float(r['count']-1.5))
         r['stderr'] = r['stddev']/sqrt(r['count'])
         r['stderrp'] = 100.0*r['stderr']/float(r['mean'])
     return r
@@ -92,6 +94,7 @@ class S1S2RawFennecAddResult():
             result['cached'] = int(r['data']['cached'])
             result['blddate'] = datetime.utcfromtimestamp(
                 float(r["data"]["blddate"])).strftime("%Y-%m-%d %H:%M:%S")
+            result['rejected'] = int(r['data']['rejected'])
         except ValueError:
             raise web.badrequest()
 
@@ -102,6 +105,26 @@ class S1S2RawFennecAddResult():
             result[key] = r['data'][key]
 
         autophonedb.db.insert(autophonedb.SQL_TABLE, **result)
+
+
+class S1S2RawFennecCheckResult():
+    @templeton.handlers.json_response
+    def GET(self):
+        query, body = templeton.handlers.get_request_parms()
+        phoneid = query['phoneid'][0]
+        testname = query['test'][0]
+        revision = query['revision'][0]
+        productname = query['product'][0]
+
+        what = 'phoneid,testname,revision,productname,rejected'
+        where = 'phoneid=$phoneid and testname=$testname and revision=$revision and productname=$productname and rejected=0'
+
+        data = autophonedb.db.select(
+            autophonedb.SQL_TABLE, what=what, where=where,
+            vars=dict(phoneid=phoneid, testname=testname,
+                      revision=revision, productname=productname))
+
+        return {"result": bool(data)}
 
 
 class S1S2RawFennecDeleteResults(object):
@@ -117,6 +140,21 @@ class S1S2RawFennecDeleteResults(object):
         autophonedb.db.delete(autophonedb.SQL_TABLE,
                               where='revision=$revision and phoneid=$phoneid '
                               'and bldtype=$bldtype', vars=vars)
+
+
+class S1S2RawFennecRejectResults(object):
+
+    def POST(self):
+        r = json.loads(web.data())
+        try:
+            vars = dict(revision=r['revision'],
+                        phoneid=r['phoneid'],
+                        bldtype=r['bldtype'])
+        except KeyError:
+            raise web.badrequest()
+        autophonedb.db.update(autophonedb.SQL_TABLE,
+                              where='revision=$revision and phoneid=$phoneid '
+                              'and bldtype=$bldtype', vars=vars, rejected=True)
 
 
 class S1S2RawFennecParameters(object):
@@ -142,6 +180,7 @@ class S1S2RawFennecData(object):
     def GET(self):
         query, body = templeton.handlers.get_request_parms()
         test = query['test'][0]
+        rejected = query['rejected'][0] == 'rejected'
         # query dates are in America/Los_Angeles timezone.
         # convert them to datetime values in tz_pac.
         startdate = datetime.strptime(query['start'][0], '%Y-%m-%d')
@@ -170,16 +209,23 @@ class S1S2RawFennecData(object):
         # results[phone][test][metric][blddate] = value
         results = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(dict))))
 
+        what = self.metrics[metric] + \
+               ',starttime,blddate,revision,phoneid,cached,rejected'
         data_validity_check = 'throbberstart>0'
         if metric != 'throbberstart':
           data_validity_check += ' and %s>0' % metric_column
+        where='testname=$test and productname=$product and \
+            blddate >= $start and blddate < $end and cached=$cached and \
+            ' + data_validity_check
+
+        # If rejected, include both rejected and non rejected results
+        if not rejected:
+            where += ' and rejected=$rejected'
 
         data = autophonedb.db.select(
-            autophonedb.SQL_TABLE,
-            what=self.metrics[metric] + ',starttime,blddate,revision,phoneid,cached',
-            where='testname=$test and productname=$product and '
-            'blddate >= $start and blddate < $end and cached=$cached and ' + data_validity_check,
-            vars=dict(test=test, product=product, start=start, end=end, cached=cached))
+            autophonedb.SQL_TABLE, what=what, where=where,
+            vars=dict(test=test, product=product, start=start, end=end,
+                      cached=cached, rejected=rejected))
 
         for d in data:
             blddate = d['blddate']
@@ -198,7 +244,9 @@ class S1S2RawFennecData(object):
                 r['revision'] = d['revision']
         for d in results.values():
             for r in d[test][metric].values():
-                if len(r['values']) == 1:
+                count = len(r['values'])
+                r['count'] = count
+                if count == 1:
                     r['value'] = r['values'][0]
                     r['stddev'] = 0
                     r['stderr'] = 0

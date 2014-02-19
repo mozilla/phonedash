@@ -45,11 +45,13 @@
           <option value="throbberstop">time to throbber stop</option>
           <option value="totalthrobber">total throbber time</option>
         </select>
-        <br />
+        <br/>
+        Include rejected results <input name="rejected" id="rejected" type="checkbox" />
+        <br/>
         Cached <input name="cached" id="cached" type="checkbox" />
-        <br />
+        <br/>
         Show error bars <input name="errorbars" id="errorbars" type="checkbox"  />
-        <br />
+        <br/>
         <select name="errorbartype" id="errorbartype">
           <option value="standarderror" selected>Standard Error</option>
           <option value="standarddeviation">Standard Deviation</option>
@@ -59,7 +61,7 @@
         Date range:<br/>
         <input id="startdate" type="text" size="10" pattern="[\d]{4}-[\d]{2}-[\d]{2}" /><br/>
         <input id="enddate" type="text" size="10" pattern="[\d]{4}-[\d]{2}-[\d]{2}" /><br/>
-        Or select recent period:
+        Or select recent period:<br/>
         <select name="period" id="period">
           <option value="0" selected="selected">---</option>
           <option value="7">Last 7 days</option>
@@ -84,7 +86,7 @@
 </script>
 
 <script type="text/html" id="flot_tooltip">
-  <div class="tooltip">{{ date }}<br/> {{phone}}<br/> (<a href="{{ url }}">{{ revision }}</a>):<br/> <b>{{ value }}{{valueerr}}</b></div>
+  <div class="tooltip">{{ date }}<br/> {{phone}}<br/> (<a href="{{ url }}">{{ revision }}</a>):<br/> <b>{{ value }}{{valueerr}}<br/> N={{count}}</b></div>
 </script>
 <!--------------------->
 
