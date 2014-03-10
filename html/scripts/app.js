@@ -180,14 +180,8 @@ function loadGraph() {
   function pad(n) { return n < 10 ? '0' + n : n; }
   var params = {};
   $.makeArray($('#controls select').each(function(i, e) { params[e.name] = e.value; }));
-  // create a MountainView date and get its timezone offset in minutes
-  var tzoffset = makeMountainViewDate().getTimezoneOffset();
-  // create the timezone string for MountainView date to force input to be parsed as MountainView.
-  var tzhours = Math.floor(Math.abs(tzoffset)/60);
-  var tzminutes = Math.abs(tzoffset) - 60*tzhours;
-  var tzstring = 'T00:00:00' + (tzoffset < 0 ? '+' : '-') + pad(tzhours) + ':' + pad(tzminutes);
-  var startdatestr = ISODateString(new Date($('#startdate').attr('value') + tzstring));
-  var enddatestr = ISODateString(new Date($('#enddate').attr('value') + tzstring));
+  var startdatestr = $('#startdate').attr('value');
+  var enddatestr = $('#enddate').attr('value');
 
   var hash = '#/' + params.product + '/' + params.metric + '/' + params.test +
         '/' + ($('#rejected').attr('checked')?'rejected':'norejected') +
