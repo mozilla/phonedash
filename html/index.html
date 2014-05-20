@@ -33,6 +33,7 @@
   </div>
   <div class="row-fluid">
     <div class="span2">
+      <div id="forms">
       <form name="controls" id="controls">
         <select name="product" id="product">
           <option value="">loading...</option>
@@ -56,9 +57,7 @@
           <option value="standarderror" selected>Standard Error</option>
           <option value="standarddeviation">Standard Deviation</option>
         </select>
-      </form>
-      <form name="datecontrols" id="datecontrols">
-        Date range:<br/>
+        <br/>Date range:<br/>
         <input id="startdate" type="text" size="10" pattern="[\d]{4}-[\d]{2}-[\d]{2}" /><br/>
         <input id="enddate" type="text" size="10" pattern="[\d]{4}-[\d]{2}-[\d]{2}" /><br/>
         Or select recent period:<br/>
@@ -70,6 +69,7 @@
           <option value="60">Last 60 days</option>
         </select>
       </form>
+      </div>
       <div id="legend"></div>
     </div>
     <div class="span10"><div id="plot"></div></div>

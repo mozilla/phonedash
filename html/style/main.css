@@ -11,8 +11,6 @@ body {
 }
 
 #plot {
-  width: 1000px;
-  height: 600px;
 }
 
 .tooltip {
@@ -33,4 +31,8 @@ input[type=text] {
 
 .optionmenu {
   font-size: smaller;
+}
+
+#legend {
+  overflow-y: auto;
 }

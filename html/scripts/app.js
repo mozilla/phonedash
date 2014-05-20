@@ -88,18 +88,17 @@ function getDataPoints(params, data) {
     }
   }
 
-  // Include phones with no data in legend and mark them appropriately.
-  for (i = 0; i < allPhones.length; i++) {
-    if (phones.indexOf(allPhones[i]) == -1) {
-      plotdata.push({ label: allPhones[i] + ' (no data)',
-                      data: [],
-                      color: '#dddddd',
-                      noData: true /* tmp variable */});
-    }
-  }
-
   plotdata.sort(function (a, b) {
-    return String.localeCompare(a.label, b.label);
+    if ('localeCompare' in String) {
+        return String.localeCompare(a.label, b.label);
+    }
+    if (a.label < b.label) {
+       return -1;
+    }
+    if (a.label > b.label) {
+        return +1;
+    }
+    return 0;
   });
 
   // Ensure each phone's colour stays the same when reloading data.
@@ -242,6 +241,7 @@ function setControls(product, metric, test, rejected, startdate, enddate, cached
   if (errorbartype) {
     $('#errorbartype option[value="' + errorbartype + '"]').attr('selected', true);
   }
+  loadGraph();
 }
 
 function ISODateString(d) {
@@ -261,8 +261,7 @@ function periodChanged() {
   var startDate = makeMountainViewDate(endDate);
   startDate.setDate(startDate.getDate() - period);
   $('#startdate').attr('value', ISODateString(startDate));
-  loadGraph();
-  return false;
+  return true;
 }
 
 function dateChanged() {
@@ -273,11 +272,17 @@ function dateChanged() {
       period.attr('selected', true);
     }
   }
-  loadGraph();
-  return false;
 }
 
 function main() {
+  var doc_h = $(document).height();
+  var plot_h = Math.floor(doc_h * 0.90);
+  var plot_w  = Math.floor($(document).width() * 0.90);
+  var forms_h = $("#forms").height();
+  var legend_h = plot_h > forms_h ? (plot_h - forms_h) : 600;
+  $("#plot").height(plot_h);
+  $("#plot").width($(document).width() * 0.75);
+  $("#legend").height(legend_h);
   // Configure date controls.
   $.datepicker.setDefaults({
     showOn: "button",
@@ -289,8 +294,6 @@ function main() {
   $('#enddate').datepicker();
 
   $('#period').on('change', periodChanged);
-  $('#startdate').on('change', dateChanged);
-  $('#enddate').on('change', dateChanged);
 
   $.getJSON('api/s1s2/info/', function(data) {
     loadOptions(data);
