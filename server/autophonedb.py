@@ -60,7 +60,10 @@ if not table_exists_query:
 
     if SQL_TYPE == 'mysql':
         s1s2query += ',\
-            INDEX idx_date_phone_test(blddate,phoneid,testname,productversion)'
+            INDEX idx_date_phone_test(blddate,phoneid,testname,productversion), \
+            INDEX idx_phoneid(phoneid), \
+            INDEX idx_testname(testname), \
+            INDEX idx_productname(productname)'
 
     s1s2query += ')'
 
