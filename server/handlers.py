@@ -4,7 +4,6 @@
 
 import ConfigParser
 import json
-import jwt
 import pytz
 import re
 import templeton.handlers
@@ -13,6 +12,8 @@ import web
 from collections import defaultdict
 from datetime import datetime, timedelta
 from math import sqrt
+
+from jot import jwt, jws
 
 import autophonedb
 
@@ -71,7 +72,7 @@ class S1S2RawFennecAddResult():
         content_type = web.ctx.env.get('CONTENT_TYPE', '')
         if content_type == 'application/jwt':
             token = jwt.decode(web.data(),
-                               signers=[jwt.jws.HmacSha(keydict=CLIENT_KEYS)])
+                               signers=[jws.HmacSha(keydict=CLIENT_KEYS)])
             if not token['valid']:
                 print 'Bad signature from %s!  Ignoring results.' % \
                     token['headers'].get('kid', '(unknown)')
