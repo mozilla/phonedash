@@ -1,5 +1,5 @@
--e git://github.com/markrcote/jwt.git#egg=jwt
 mysql-python
+jot
 templeton
 python-dateutil
 pytz
