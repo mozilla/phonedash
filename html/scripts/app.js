@@ -60,6 +60,9 @@ function getDataPoints(params, data) {
           } else {
             repo = 'unknown';
           }
+          if (repo == 'try' && params.try == 'notry') {
+            continue
+          }
           revisions[repo + buildtime] = buildData.revision;
           if (params.errorbartype == 'standarderror') {
             errorbarvalue = buildData.stderr;
@@ -148,7 +151,7 @@ function makePlot(params, data) {
       points: {
           show: true,
           errorbars: 'y',
-          yerr: {show: $('#errorbars')[0].checked, upperCap: '-', lowerCap: '-'}
+          yerr: {show: params.errorbars, upperCap: '-', lowerCap: '-'}
       },
       lines: { show: true }
     },
@@ -183,12 +186,13 @@ function loadGraph() {
   var enddatestr = $('#enddate').attr('value');
 
   var hash = '#/' + params.product + '/' + params.metric + '/' + params.test +
-        '/' + ($('#rejected').attr('checked')?'rejected':'norejected') +
+        '/' + params.rejected +
         '/' + startdatestr +
         '/' + enddatestr +
-        '/' + ($('#cached').attr('checked')?'cached':'notcached') +
-        '/' + ($('#errorbars').attr('checked')?'errorbars':'noerrorbars') +
-        '/' + params.errorbartype;
+        '/' + params.cached +
+        '/' + params.errorbars +
+        '/' + params.errorbartype +
+        '/' + params.try;
   if (hash != document.location.hash) {
     document.location.hash = hash;
     return false;
@@ -196,12 +200,13 @@ function loadGraph() {
   $.getJSON('api/s1s2/data/?product=' + params.product +
             '&metric=' + params.metric +
             '&test=' + params.test +
-            '&rejected=' + ($('#rejected').attr('checked')?'rejected':'norejected') +
+            '&rejected=' + params.rejected +
             '&start=' + startdatestr +
             '&end=' + enddatestr +
-            '&cached=' + ($('#cached').attr('checked')?'cached':'notcached') +
-            '&errorbars=' + ($('#errorbars').attr('checked')?'errorbars':'noerrorbars') +
-            '&errorbartype=' + params.errorbartype,
+            '&cached=' + params.cached +
+            '&errorbars=' + params.errorbars +
+            '&errorbartype=' + params.errorbartype +
+            '&try=' + params.try,
             function(data) { makePlot(params, data); }
            );
   return false;
@@ -218,7 +223,7 @@ function setControls(product, metric, test, rejected, startdate, enddate, cached
     $('#test option[value="' + test + '"]').attr('selected', true);
   }
   if (rejected) {
-    $('#rejected').attr('checked', rejected == 'rejected');
+    $('#rejected option[value="' + rejected + '"]').attr('selected', true)
   }
   if (!startdate) {
     $('#period option[value="7"]').attr('selected', true);
@@ -233,10 +238,10 @@ function setControls(product, metric, test, rejected, startdate, enddate, cached
     dateChanged();
   }
   if (cached) {
-    $('#cached').attr('checked', cached == 'cached');
+    $('#cached option[value="' + cached + '"]').attr('selected', true)
   }
   if (errorbars) {
-    $('#errorbars').attr('checked', errorbars == 'errorbars');
+    $('#errorbars option[value="' + errorbars + '"]').attr('selected', true)
   }
   if (errorbartype) {
     $('#errorbartype option[value="' + errorbartype + '"]').attr('selected', true);
@@ -310,8 +315,11 @@ function main() {
                   '/([^/]*)': {
                     '/([^/]*)': {
                       '/([^/]*)': {
-                        on: setControls
+                        '/([^/]*)': {
+                          on: setControls
+                        },
                       },
+                      on: setControls
                     },
                     on: setControls
                   },

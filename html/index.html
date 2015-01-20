@@ -41,18 +41,27 @@
         <select name="test" id="test">
           <option value="">loading...</option>
         </select>
+        <select name="cached" id="cached">
+          <option value="notcached">First Run</option>
+          <option value="cached">Second Run</option>
+        </select>
         <select name="metric" id="metric">
           <option value="throbberstart">time to throbber start</option>
           <option value="throbberstop">time to throbber stop</option>
           <option value="totalthrobber">total throbber time</option>
         </select>
-        <br/>
-        Include rejected results <input name="rejected" id="rejected" type="checkbox" />
-        <br/>
-        Cached <input name="cached" id="cached" type="checkbox" />
-        <br/>
-        Show error bars <input name="errorbars" id="errorbars" type="checkbox"  />
-        <br/>
+        <select name="try" id="try">
+          <option value="notry">Exclude try builds</option>
+          <option value="try">Include try builds</option>
+        </select>
+        <select name="rejected" id="rejected">
+          <option value="norejected">Exclude rejected results</option>
+          <option value="rejected">Include rejected results</option>
+        </select>
+        <select name="errorbars" id="errorbars">
+          <option value="noerrorbars">No Error bars</option>
+          <option value="errorbars">Show Error bars</option>
+        </select>
         <select name="errorbartype" id="errorbartype">
           <option value="standarderror" selected>Standard Error</option>
           <option value="standarddeviation">Standard Deviation</option>
