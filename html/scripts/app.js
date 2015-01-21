@@ -151,7 +151,7 @@ function makePlot(params, data) {
       points: {
           show: true,
           errorbars: 'y',
-          yerr: {show: params.errorbars, upperCap: '-', lowerCap: '-'}
+          yerr: {show: params.errorbars == 'errorbars', upperCap: '-', lowerCap: '-'}
       },
       lines: { show: true }
     },
