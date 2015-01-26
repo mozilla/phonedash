@@ -63,6 +63,9 @@ function getDataPoints(params, data) {
           if (repo == 'try' && params.try == 'notry') {
             continue
           }
+          if (repo != 'try' && params.try == 'try') {
+            continue
+          }
           revisions[repo + buildtime] = buildData.revision;
           if (params.errorbartype == 'standarderror') {
             errorbarvalue = buildData.stderr;
@@ -212,7 +215,7 @@ function loadGraph() {
   return false;
 }
 
-function setControls(product, metric, test, rejected, startdate, enddate, cached, errorbars, errorbartype) {
+function setControls(product, metric, test, rejected, startdate, enddate, cached, errorbars, errorbartype, trybuild) {
   if (product) {
     $('#product option[value="' + product + '"]').attr('selected', true);
   }
@@ -245,6 +248,9 @@ function setControls(product, metric, test, rejected, startdate, enddate, cached
   }
   if (errorbartype) {
     $('#errorbartype option[value="' + errorbartype + '"]').attr('selected', true);
+  }
+  if (trybuild) {
+    $('#try option[value="' + trybuild + '"]').attr('selected', true);
   }
   loadGraph();
 }
@@ -318,6 +324,7 @@ function main() {
                         '/([^/]*)': {
                           on: setControls
                         },
+                        on: setControls
                       },
                       on: setControls
                     },
