@@ -129,7 +129,8 @@ var testmap = {
 var productmap = {
   'org.mozilla.fennec': 'Nightly',
   'org.mozilla.fennec_aurora': 'Aurora',
-  'org.mozilla.firefox': 'Beta'
+  'org.mozilla.firefox_beta': 'Beta',
+  'org.mozilla.firefox': 'Firefox'
 };
 
 function testDescr(testname) {
