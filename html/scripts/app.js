@@ -123,7 +123,9 @@ var testmap = {
   'remote-twitter': 'Remote Twitter Page',
   'local-twitter': 'Local Twitter Page',
   'remote-blank': 'Remote Blank Page',
-  'local-blank': 'Local Blank Page'
+  'local-blank': 'Local Blank Page',
+  'remote-nytimes': 'Remote NYTimes Page',
+  'local-nytimes': 'Local NYTimes Page'
 };
 
 var productmap = {
