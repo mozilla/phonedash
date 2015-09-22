@@ -64,7 +64,7 @@ def get_stats(values):
 
 
 def is_clean(s):
-    return bool(re.match('(https?://)?[/\w\.\- ]+$', s))
+    return bool(re.match('(https?://)?[/\w\.\- ]*$', s))
 
 
 class S1S2RawFennecAddResult():
