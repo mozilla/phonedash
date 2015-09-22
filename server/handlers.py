@@ -7,6 +7,7 @@ import json
 import pytz
 import re
 import templeton.handlers
+import traceback
 import web
 
 from collections import defaultdict
@@ -74,13 +75,15 @@ class S1S2RawFennecAddResult():
             token = jwt.decode(web.data(),
                                signers=[jws.HmacSha(keydict=CLIENT_KEYS)])
             if not token['valid']:
-                print 'Bad signature from %s!  Ignoring results.' % \
-                    token['headers'].get('kid', '(unknown)')
+                print >> web.webapi.debug, (
+                    'Bad signature from %s!  Ignoring results.' %
+                    token['headers'].get('kid', '(unknown)'))
                 raise web.badrequest('bad signature')
             r = token['payload']
         elif REQUIRE_SIGNED:
-            print 'Signature required but plain JSON received.  Ignoring ' \
-                'results.'
+            print >> web.webapi.debug, (
+                'Signature required but plain JSON received.  '
+                'Ignoring results.')
             raise web.badrequest('signature required')
         else:
             r = json.loads(web.data())
@@ -97,11 +100,16 @@ class S1S2RawFennecAddResult():
                 float(r["data"]["blddate"])).strftime("%Y-%m-%d %H:%M:%S")
             result['rejected'] = int(r['data']['rejected'])
         except ValueError:
+            print >> web.webapi.debug, 'Request: %s, %s' % (
+                (r, traceback.format_exc()))
             raise web.badrequest()
 
         for key in ('phoneid', 'testname', 'revision', 'bldtype', 'productname',
                     'productversion', 'osver', 'machineid'):
             if not is_clean(r['data'][key]):
+                print >> web.webapi.debug, (
+                    'Request %s: %s %s is not clean' % (
+                        r['data'], key, r['data'][key]))
                 raise web.badrequest()
             result[key] = r['data'][key]
 
@@ -137,6 +145,8 @@ class S1S2RawFennecDeleteResults(object):
                         phoneid=r['phoneid'],
                         bldtype=r['bldtype'])
         except KeyError:
+            print >> web.webapi.debug, (
+                'Request: %s, %s' % (r, traceback.format_exc()))
             raise web.badrequest()
         autophonedb.db.delete(autophonedb.SQL_TABLE,
                               where='revision=$revision and phoneid=$phoneid '
@@ -152,6 +162,8 @@ class S1S2RawFennecRejectResults(object):
                         phoneid=r['phoneid'],
                         bldtype=r['bldtype'])
         except KeyError:
+            print >> web.webapi.debug, (
+                'Request: %s, %s' % (r, traceback.format_exc()))
             raise web.badrequest()
         autophonedb.db.update(autophonedb.SQL_TABLE,
                               where='revision=$revision and phoneid=$phoneid '
