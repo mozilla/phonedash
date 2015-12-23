@@ -88,6 +88,7 @@
     </div>
     <div class="span10"><div id="plot"></div></div>
   </div>
+  <div><span id="rev1"></span>&nbsp;<span id="rev2"></span>&nbsp;<span id="pushlog"></span></div>
 </div>
 
 <!--ICanHaz templates-->
@@ -100,9 +101,15 @@
 </script>
 
 <script type="text/html" id="flot_tooltip">
-  <div class="tooltip">{{ date }}<br/> {{phone}}<br/> (<a href="{{ url }}">{{ revision }}</a>):<br/> <b>{{ value }}{{valueerr}}<br/> N={{count}}</b></div>
+  <div class="tooltip">
+    {{ date }}<br/>
+    {{phone}}<br/>
+    (<a href="{{ url }}">{{ revision }}</a>):<br/>
+    <b>{{ value }}{{valueerr}}<br/>
+      N={{count}}
+    </b>
+  </div>
 </script>
-<!--------------------->
 
 </body>
 
