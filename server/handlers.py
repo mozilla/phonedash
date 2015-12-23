@@ -60,6 +60,7 @@ def get_stats(values):
         r['stddev'] = sqrt(sum([(value - r['mean'])**2 for value in values])/float(r['count']-1.5))
         r['stderr'] = r['stddev']/sqrt(r['count'])
         r['stderrp'] = 100.0*r['stderr']/float(r['mean'])
+    r['min'] = min(values)
     return r
 
 
@@ -269,4 +270,5 @@ class S1S2RawFennecData(object):
                     r['stddev'] = stats['stddev']
                     r['stderr'] = stats['stderr']
                 del r['values']
+                r['min'] = stats['min']
         return results

@@ -81,9 +81,27 @@ function getDataPoints(params, data) {
             series[repo].counts = [];
           }
           count = buildData.count;
-          series[repo].data.push([buildtime,
-                                  buildData.value,
-                                  errorbarvalue]);
+          // Check the new valuetype param for the new min value first
+          // and fall back to the original mean value if it is not
+          // found.
+          var data_item;
+          if (params.valuetype == 'min') {
+            // The yerr_lower value can not be zero, otherwise the
+            // flot errorbars plugin will not display the error bar,
+            // therefore set it to 1.  Set the yerr_upper to be twice
+            // the errorbar value so the errorbar length is the same
+            // for mean and min.
+            data_item = [buildtime,
+                         buildData.min,
+                         1,
+                         2*errorbarvalue];
+          }
+          else {
+            data_item = [buildtime,
+                         buildData.value,
+                         errorbarvalue];
+          }
+          series[repo].data.push(data_item);
           series[repo].counts.push(count);
         }
       }
@@ -157,7 +175,11 @@ function makePlot(params, data) {
       points: {
           show: true,
           errorbars: 'y',
-          yerr: {show: params.errorbars == 'errorbars', upperCap: '-', lowerCap: '-'}
+        yerr: {
+          show: params.errorbars == 'errorbars',
+          asymmetric: params.valuetype == 'min',
+          upperCap: '-',
+          lowerCap: '-'}
       },
       lines: { show: true }
     },
@@ -170,7 +192,7 @@ function makePlot(params, data) {
   $('#plot').bind('plotclick',
     plotClick($('#plot'), function (item) {
       var y = item.datapoint[1];
-      var yerr = item.datapoint[2];
+      var yerr = params.valuetype == 'min' ? item.datapoint[3] : item.datapoint[2];
       showLineTooltip(item.pageX,
                       item.pageY,
                       item.datapoint[0],
@@ -198,7 +220,8 @@ function loadGraph() {
         '/' + params.cached +
         '/' + params.errorbars +
         '/' + params.errorbartype +
-        '/' + params.try;
+        '/' + params.try +
+        '/' + params.valuetype;
   if (hash != document.location.hash) {
     document.location.hash = hash;
     return false;
@@ -212,13 +235,14 @@ function loadGraph() {
             '&cached=' + params.cached +
             '&errorbars=' + params.errorbars +
             '&errorbartype=' + params.errorbartype +
-            '&try=' + params.try,
+            '&try=' + params.try +
+            '&valuetype=' + params.valuetype,
             function(data) { makePlot(params, data); }
            );
   return false;
 }
 
-function setControls(product, metric, test, rejected, startdate, enddate, cached, errorbars, errorbartype, trybuild) {
+function setControls(product, metric, test, rejected, startdate, enddate, cached, errorbars, errorbartype, trybuild, valuetype) {
   if (product) {
     $('#product option[value="' + product + '"]').attr('selected', true);
   }
@@ -254,6 +278,9 @@ function setControls(product, metric, test, rejected, startdate, enddate, cached
   }
   if (trybuild) {
     $('#try option[value="' + trybuild + '"]').attr('selected', true);
+  }
+  if (valuetype) {
+    $('#valuetype option[value="' + valuetype + '"]').attr('selected', true);
   }
   loadGraph();
 }
@@ -325,7 +352,9 @@ function main() {
                     '/([^/]*)': {
                       '/([^/]*)': {
                         '/([^/]*)': {
-                          on: setControls
+                          '/([^/]*)': {
+                            on: setControls
+                          },
                         },
                         on: setControls
                       },
