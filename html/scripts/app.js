@@ -82,8 +82,8 @@ function getDataPoints(params, data) {
           }
           count = buildData.count;
           // Check the new valuetype param for the new min value first
-          // and fall back to the original mean value if it is not
-          // found.
+          // then check for median. Fall back to the original mean
+          // value if it is not found.
           var data_item;
           if (params.valuetype == 'min') {
             // The yerr_lower value can not be zero, otherwise the
@@ -95,6 +95,11 @@ function getDataPoints(params, data) {
                          buildData.min,
                          1,
                          2*errorbarvalue];
+          }
+          else if (params.valuetype == 'median') {
+            data_item = [buildtime,
+                         buildData.median,
+                         errorbarvalue];
           }
           else {
             data_item = [buildtime,

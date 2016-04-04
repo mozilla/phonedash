@@ -61,6 +61,14 @@ def get_stats(values):
         r['stderr'] = r['stddev']/sqrt(r['count'])
         r['stderrp'] = 100.0*r['stderr']/float(r['mean'])
     r['min'] = min(values)
+
+    middle = r['count']/2
+    if r['count'] % 2:
+        # odd
+        r['median'] = values[middle]
+    else:
+        # even
+        r['median'] = (values[middle-1] + values[middle])/2.0
     return r
 
 
@@ -271,4 +279,5 @@ class S1S2RawFennecData(object):
                     r['stderr'] = stats['stderr']
                 del r['values']
                 r['min'] = stats['min']
+                r['median'] = stats['median']
         return results
