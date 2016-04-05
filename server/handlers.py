@@ -225,8 +225,6 @@ class S1S2RawFennecData(object):
         metric_column = self.metrics[metric]
         product = query['product'][0]
         cached = query['cached'][0] == 'cached'
-        errorbars = query['errorbars'][0] == 'errorbars'
-        errorbartype = query['errorbartype'][0]
 
         # results[phone][test][metric][blddate] = value
         results = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(dict))))
