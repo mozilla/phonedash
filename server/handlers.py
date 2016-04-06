@@ -27,6 +27,7 @@ urls = (
     '/s1s2/check/?', 'S1S2RawFennecCheckResult',
     '/s1s2/info/?', 'S1S2RawFennecParameters',
     '/s1s2/data/?', 'S1S2RawFennecData',
+    '/s1s2/alldata/?', 'S1S2RawAllFennecData',
     '/s1s2/delete/?', 'S1S2RawFennecDeleteResults',
     '/s1s2/reject/?', 'S1S2RawFennecRejectResults'
 )
@@ -62,6 +63,7 @@ def get_stats(values):
         r['stderrp'] = 100.0*r['stderr']/float(r['mean'])
     r['min'] = min(values)
 
+    values.sort()
     middle = r['count']/2
     if r['count'] % 2:
         # odd
@@ -278,4 +280,116 @@ class S1S2RawFennecData(object):
                 del r['values']
                 r['min'] = stats['min']
                 r['median'] = stats['median']
+        return results
+
+
+class S1S2RawAllFennecData(object):
+
+    metrics = { 'throbberstart': 'throbberstart',
+                'throbberstop': 'throbberstop',
+                'totalthrobber': 'throbberstop-throbberstart' }
+
+    @templeton.handlers.json_response
+    def GET(self):
+        query, body = templeton.handlers.get_request_parms()
+        # query dates are in America/Los_Angeles timezone.
+        # convert them to datetime values in tz_pac.
+        startdate = datetime.strptime(query['start'][0], '%Y-%m-%d')
+        enddate = datetime.strptime(query['end'][0], '%Y-%m-%d')
+        startdate = tz_pac.localize(startdate)
+        enddate = tz_pac.localize(enddate)
+        # convert the datetimes to utc.
+        startdate = startdate.astimezone(tz_utc)
+        enddate = enddate.astimezone(tz_utc)
+        # add one day to the end datedate so we capture the full end day.
+        # e.g. if the user gives an end day of 2012-01-01, we want
+        # everything on that day, so really we want everything before
+        # 2012-01-02.
+        enddate = enddate + timedelta(days=1)
+        # get the isoformat of the full datetimes
+        start = startdate.isoformat(' ')[0:-6]
+        end = enddate.isoformat(' ')[0:-6]
+
+        # results[phone][test][metric][blddate] = value
+
+        what = ('phoneid,testname,starttime,throbberstart,throbberstop,cached,'
+                'blddate,revision,bldtype,productname,productversion,osver,'
+                'machineID,rejected,runstamp')
+
+        where = 'blddate >= $start and blddate < $end and throbberstart>0 and throbberstop>0'
+
+        order = 'revision, bldtype, blddate, phoneid, runstamp, testname'
+
+        data = autophonedb.db.select(
+            autophonedb.SQL_TABLE, what=what, where=where, order=order,
+            vars=dict(start=start, end=end))
+
+        """
+        results = {
+            '<revision>' : {
+                'productname': '...',
+                'productversion': '...',
+                'runs': {
+                    '<runstamp>:<bldtype>:<blddate>:<phoneid>': {
+                        'runstamp': '...',
+                        'bldtype': '...',
+                        'blddate': '...',
+                        'phoneid': '...',
+                        'osver': '...',
+                        'rejected': '...',
+                        'tests': {
+                            # tests[testname]['0'] is uncached
+                            # tests[testname]['1'] is cached
+                            # tests[testname]['0']['throbberstart'] = [throbberstart - starttime, ...]
+                            # tests[testname]['0']['throbberstop] = [throbberstop - starttime, ....]
+                            # tests[testname]['0']['throbbertime] = [throbberstop - throbberstart, ....]
+                            '<testname>': {
+                                '0': {'throbberstart': [], 'throbberstop': [], 'throbbertime': []},
+                                '1': {'throbberstart': [], 'throbberstop': [], 'throbbertime': []},
+                            },
+                        },
+                    },
+                },
+            },
+        }
+        """
+
+        results = {}
+        result = None
+        runs = None
+        run = None
+
+        for row in data:
+            if row['revision'] not in results:
+                result = {
+                    'productname': row['productname'],
+                    'productversion': row['productversion'],
+                    'runs': {},
+                    }
+                results[row['revision']] = result
+                runs = result['runs']
+            run_key = "%s:%s:%s:%s" % (row['runstamp'], row['bldtype'], row['blddate'], row['phoneid'])
+            if run_key not in runs:
+                run = {
+                    'runstamp': row['runstamp'],
+                    'bldtype': row['bldtype'],
+                    'blddate': row['blddate'],
+                    'phoneid': row['phoneid'],
+                    'osver': row['osver'],
+                    'rejected': row['rejected'],
+                    'tests': {},
+                    }
+                tests = run['tests']
+                runs[run_key] = run
+            if row['testname'] not in tests:
+                measurements = {
+                    '0': {'throbberstart': [], 'throbberstop': [], 'throbbertime': []},
+                    '1': {'throbberstart': [], 'throbberstop': [], 'throbbertime': []},
+                }
+                tests[row['testname']] = measurements
+
+            cached = str(row['cached'])
+            measurements[cached]['throbberstart'].append(row['throbberstart'] - row['starttime'])
+            measurements[cached]['throbberstop'].append(row['throbberstop'] - row['starttime'])
+            measurements[cached]['throbbertime'].append(row['throbberstop'] - row['throbberstart'])
         return results
