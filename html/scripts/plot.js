@@ -29,7 +29,7 @@ function TooltipData(timestamp, product, phone, revision_url) {
   this.product = product;
   this.phone = phone;
   this.revision_url = revision_url;
-  var re = new RegExp('(https?://hg.mozilla.org/(integration/)?)([^/]*)/rev/(.*)');
+  var re = new RegExp('(https?://hg.mozilla.org/(releases/|integration/)?)([^/]*)/rev/(.*)');
   var captures = re.exec(revision_url);
   if (captures) {
     this.repo_prefix = captures[1] + captures[3];
