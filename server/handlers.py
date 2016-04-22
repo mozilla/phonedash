@@ -310,15 +310,13 @@ class S1S2RawAllFennecData(object):
         start = startdate.isoformat(' ')[0:-6]
         end = enddate.isoformat(' ')[0:-6]
 
-        # results[phone][test][metric][blddate] = value
+        what = ('revision,bldtype,blddate,phoneid,rejected,testname,starttime,'
+                'throbberstart,throbberstop,cached,productname,productversion,'
+                'osver,machineID')
 
-        what = ('phoneid,testname,starttime,throbberstart,throbberstop,cached,'
-                'blddate,revision,bldtype,productname,productversion,osver,'
-                'machineID,rejected,runstamp')
+        where = 'blddate >= $start and blddate < $end and throbberstart>0 and throbberstop>throbberstart'
 
-        where = 'blddate >= $start and blddate < $end and throbberstart>0 and throbberstop>0'
-
-        order = 'revision, bldtype, blddate, phoneid, runstamp, testname'
+        order = 'revision, bldtype, blddate, phoneid, rejected, testname'
 
         data = autophonedb.db.select(
             autophonedb.SQL_TABLE, what=what, where=where, order=order,
@@ -330,8 +328,7 @@ class S1S2RawAllFennecData(object):
                 'productname': '...',
                 'productversion': '...',
                 'runs': {
-                    '<runstamp>:<bldtype>:<blddate>:<phoneid>': {
-                        'runstamp': '...',
+                    '<bldtype>:<blddate>:<phoneid>:<rejected>': {
                         'bldtype': '...',
                         'blddate': '...',
                         'phoneid': '...',
@@ -368,10 +365,9 @@ class S1S2RawAllFennecData(object):
                     }
                 results[row['revision']] = result
                 runs = result['runs']
-            run_key = "%s:%s:%s:%s" % (row['runstamp'], row['bldtype'], row['blddate'], row['phoneid'])
+            run_key = "%s:%s:%s:%s" % (row['bldtype'], row['blddate'], row['phoneid'], row['rejected'])
             if run_key not in runs:
                 run = {
-                    'runstamp': row['runstamp'],
                     'bldtype': row['bldtype'],
                     'blddate': row['blddate'],
                     'phoneid': row['phoneid'],
