@@ -2,19 +2,26 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this file,
  * You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var meta = {
-  init: true,
+var META = {
   phones: {},
   tests: {},
   repos: {},
+  trimming: {trim: false},
   cached: {first: true, second: true},
   metrics: {throbberstart: true, throbberstop: true, throbbertime: true},
 };
 
-var MountainView = 'America/Los_Angeles';
-var no_series_binning = 'repo phonetype phoneid test_name cached_label metric';
+var INITIALIZING = true;
+var QUERY_VALUES = {};
+var MOUNTAIN_VIEW = 'America/Los_Angeles';
+var NO_SERIES_BINNING = 'repo-phonetype-phoneid-test_name-cached_label-metric';
+var STARTDATE = null;
+var ENDDATE = null;
+var ALL_DATA = null;
+var PLOT;
+var CURRENT_SELECTION;
 
-function get_statistics(values) {
+function getStatistics(values) {
   var statistics = {
     'count': values.length,
     'mean': 0,
@@ -62,18 +69,18 @@ function get_statistics(values) {
   return statistics;
 }
 
-
 function makeMountainViewDate(s) {
   if (!s) {
     s = new Date();
   }
-  return new timezoneJS.Date(s, MountainView);
+  return new timezoneJS.Date(s, MOUNTAIN_VIEW);
 }
 
 function togglePhones(phone_class_checkbox) {
-  var phone_class = $(phone_class_checkbox).val();
-  $('[phone_class=' + phone_class + ']').each(function(index) {
-    this.checked = !this.checked;
+  // Set the phones of this class to match the phone class.
+  var phone_class_checked = phone_class_checkbox.prop('checked');
+  $('[phone_class="' + phone_class_checkbox.prop('name') + '"]').each(function(index) {
+    $(this).prop('checked', phone_class_checked);
   });
 }
 
@@ -81,12 +88,11 @@ function loadOptions() {
   var i;
   var prev_phone_class;
   var phone_class;
+  var phone_class_checked;
+  var checked;
 
-  for (var option in meta) {
-    if (option == 'init') {
-      continue;
-    }
-    var values = Object.keys(meta[option]);
+  for (var option in META) {
+    var values = Object.keys(META[option]);
     if (values.length == 0) {
       $('#' + option).html('No data');
       continue;
@@ -95,45 +101,53 @@ function loadOptions() {
 
     var html = '';
     for (i = 0; i < values.length; i++) {
+      var value = values[i];
+      // set the checkbox to checked by default if there is no query
+      // or if the query specifies it explicitly.
       if (option == 'phones') {
-        phone_class = values[i].replace(/-[0-9]+$/, '');
+        phone_class = value.replace(/-[0-9]+$/, '');
         if (phone_class != prev_phone_class) {
           prev_phone_class = phone_class;
-          html += ('<input type="checkbox" ' +
-                   'checked="checked" class="noload" ' +
-                   'id="' + phone_class + '" value="' + phone_class + '" ' +
+          html += ('<input type="checkbox" checked class="noload" ' +
+                   'id="' + phone_class + '" ' +
+                   'name="' + phone_class + '" ' +
                    'onclick="togglePhones($(this))"/>' +
                    phone_class + '<br/>');
         }
-        html += ('&nbsp;&nbsp;&nbsp&nbsp;<input type="checkbox" ' +
-                 'checked="checked" class="noload" ' +
+        html += ('&nbsp;&nbsp;&nbsp&nbsp;' +
+                 '<input type="checkbox" checked class="noload" ' +
+                 'id="' + value + '" ' +
                  'phone_class="' + phone_class + '" ' +
-                 'id="' + values[i] +
-                 '" value="' + values[i] + '"/>' + values[i] + '<br/>');
+                 'name="' + value + '"/>' +
+                 value + '<br/>');
       } else {
-        html += '<input type="checkbox" ';
-        if (option != 'repos' || option == 'repos' && values[i] != 'try') {
-          // do not automatically display try results
-          html += 'checked="checked" '
-        }
-        html += 'class="noload" id="' + values[i] + '" value="' + values[i] + '" />' + values[i] + '<br />';
+        // do not automatically display try results
+        checked = (option != 'repos' || option == 'repos' && value != 'try') ? 'checked="checked"' : '';
+        html += ('<input type="checkbox" class="noload" ' + checked + ' ' +
+                 'id="' + value + '" ' +
+                 'name="' + value + '" />' +
+                 value + '<br />');
       }
     }
     $('#' + option).html(html);
   }
 }
 
-function get_series_key(binning, vars) {
+function getSeriesKey(binning, vars) {
   // get a key/label for the data.
-  var bins = binning.split(' ');
+  var bins = binning.split('-');
   var key = '';
   for (var i = 0; i < bins.length; i++) {
-    key += vars[bins[i]] + ' ';
+    key += vars[bins[i]] + '-';
   }
-  return key.trimRight();
+  return key.substring(0, key.length-1);
 }
 
-function getDataPoints(params, data) {
+function isChecked(name) {
+  return $('#' + name).prop('checked')
+}
+
+function getDataPoints(params) {
   var revisions = {};
   var plotdata = [];
   var i;
@@ -154,12 +168,67 @@ function getDataPoints(params, data) {
   var values;
   var stats;
   var data_item;
-  var no_binning = (no_series_binning == params.binning);
+  var no_binning = (NO_SERIES_BINNING == params.binning);
   var build_time_key;
   var data_hash_list;
 
-  for (revision in data) {
-    revision_object = data[revision];
+  if (INITIALIZING) {
+    // We are creating the plot control checkboxes. They
+    // will be checked initially.
+    for (revision in ALL_DATA) {
+      revision_object = ALL_DATA[revision];
+
+      repoCaptures = reRepo.exec(revision);
+      if (repoCaptures) {
+        repo = repoCaptures[1];
+      } else {
+        repo = 'unknown';
+      }
+
+      if (!(repo in META.repos)) {
+        META.repos[repo] = true;
+      }
+
+      for (run_key in revision_object.runs) {
+        run_object = revision_object.runs[run_key];
+
+        if (!(run_object.phoneid in META.phones)) {
+          META.phones[run_object.phoneid] = true;
+        }
+
+        for (var test_name in run_object.tests) {
+          if (!(test_name in META.tests)) {
+            META.tests[test_name] = true;
+          }
+        }
+      }
+    }
+    loadOptions();
+  }
+
+  // We've already added the checkbox controls, so all we have to
+  // do now is sync them with the query.
+  var have_query_values = Object.keys(QUERY_VALUES).length > 0;
+  if (have_query_values) {
+    $('#plot-controls input[type="checkbox"]').each(function(i) {
+      $(this).prop('checked', this.name in QUERY_VALUES );
+    });
+  }
+
+  if (INITIALIZING) {
+    // Now we can sync our hash with the loaded values.
+    var querystring = $('#plot-controls').serialize();
+    QUERY_VALUES = parseQueryString(querystring);
+    var hash = ('#/' +
+                $('#startdate').attr('value') + '/' +
+                $('#enddate').attr('value') + '/' +
+                $('#plot-controls').serialize());
+    document.location.hash = hash;
+    INITIALIZING = false;
+  }
+
+  for (revision in ALL_DATA) {
+    revision_object = ALL_DATA[revision];
 
     repoCaptures = reRepo.exec(revision);
     if (repoCaptures) {
@@ -168,25 +237,14 @@ function getDataPoints(params, data) {
       repo = 'unknown';
     }
 
-    if (meta.init && !(repo in meta.repos)) {
-      meta.repos[repo] = true;
-    }
-    if (!meta.init && $('#' + repo).attr('checked') != 'checked') {
+    if (!isChecked(repo)) {
       continue;
-    }
-
-    if (meta.init && repo == 'try') {
-      // do not display try on first display
-      continue
     }
 
     for (run_key in revision_object.runs) {
       run_object = revision_object.runs[run_key];
 
-      if (meta.init && !(run_object.phoneid in meta.phones)) {
-        meta.phones[run_object.phoneid] = true;
-      }
-      if (!meta.init && $('#' + run_object.phoneid).attr('checked') != 'checked') {
+      if (!isChecked(run_object.phoneid)) {
         continue;
       }
 
@@ -197,15 +255,16 @@ function getDataPoints(params, data) {
       // The blddate stored in phonedash is in UTC.  Force blddate to
       // be parsed as UTC then convert to Mountain View time.
       build_time = makeMountainViewDate(run_object.blddate + '+00:00').getTime();
-
+      if (CURRENT_SELECTION &&
+          (build_time < CURRENT_SELECTION.xaxis.from ||
+           build_time > CURRENT_SELECTION.xaxis.to))  {
+        continue;
+      }
       // return a mapping of repo + build_time to revision for use in the tooltip.
       revisions[repo + build_time] = revision;
 
       for (var test_name in run_object.tests) {
-        if (meta.init && !(test_name in meta.tests)) {
-          meta.tests[test_name] = true;
-        }
-        if (!meta.init && $('#' + test_name).attr('checked') != 'checked') {
+        if (!isChecked(test_name)) {
           continue;
         }
 
@@ -214,15 +273,15 @@ function getDataPoints(params, data) {
           // use first, second instead of cached, uncached to easily get
           // order right during sorting of labels.
           var cached_label = (cached == '0') ? 'first' : 'second';
-          if (!meta.init && $('#cached #' + cached_label).attr('checked') != 'checked') {
+          if (!isChecked(cached_label)) {
             continue;
           }
           for (metric in test[cached]) {
-            if (!meta.init && $('#' + metric).attr('checked') != 'checked') {
+            if (!isChecked(metric)) {
               continue;
             }
             values = test[cached][metric];
-            if (values.length > 2 && $('#trim').attr('checked') == 'checked') {
+            if (values.length > 2 && $('#trim').prop('checked')) {
               values.sort();
               values = values.slice(1, values.length - 1);
             }
@@ -238,7 +297,7 @@ function getDataPoints(params, data) {
               cached_label: cached_label,
               metric: metric,
             };
-            series_key = get_series_key(no_series_binning, vars);
+            series_key = getSeriesKey(NO_SERIES_BINNING, vars);
 
             if (series_key in all_series) {
               series = all_series[series_key];
@@ -278,7 +337,7 @@ function getDataPoints(params, data) {
               }
             } else {
               var errorbarvalue;
-              stats = get_statistics(values);
+              stats = getStatistics(values);
               if (params.errorbartype == 'standarderror') {
                 errorbarvalue = stats.stderr;
               } else {
@@ -309,11 +368,6 @@ function getDataPoints(params, data) {
     }
   }
 
-  if (meta.init) {
-    meta.init = false;
-    loadOptions();
-  }
-
   var plot_all_series;
   var plot_series;
   var plot_series_key;
@@ -322,7 +376,7 @@ function getDataPoints(params, data) {
   plot_all_series = {};
   for (series_key in all_series) {
     series = all_series[series_key];
-    plot_series_key = get_series_key(params.binning, series.vars);
+    plot_series_key = getSeriesKey(params.binning, series.vars);
     if (plot_series_key in plot_all_series) {
       plot_series = plot_all_series[plot_series_key];
       for (var vars_key in series.vars) {
@@ -375,7 +429,7 @@ function getDataPoints(params, data) {
           values.push(plot_data_hash_item[0]);
           counts += plot_data_hash_item[plot_data_hash_item.length - 1]
         }
-        stats = get_statistics(values);
+        stats = getStatistics(values);
         data_item = [parseInt(build_time_key), stats.geometric_mean, 1, counts];
         plot_series.data.push(data_item);
       }
@@ -417,24 +471,100 @@ function getDataPoints(params, data) {
   return { data: plotdata, revisions: revisions };
 }
 
-function makePlot(params, data) {
-  $(".progresslabel").text( "Plotting..." );
-  $("#progressbar").show();
-  setTimeout(_makePlot, 100, params, data);
+function setClearButton(from, to) {
+  var clear_button = $("#clear-button");
+  var button_text = ("Clear selection " +
+                     makeMountainViewDate(from).toString() +
+                     " to " +
+                     makeMountainViewDate(to).toString()
+                    ).replace(/ /g, '&nbsp;');
+
+  clear_button.html(button_text);
+  clear_button.show();
 }
 
-function _makePlot(params, data) {
-  $('#plot').html();
-  var points = getDataPoints(params, data);
+function appSetSelection(event, ranges) {
+
+  setClearButton(ranges.xaxis.from, ranges.xaxis.to);
+
+  $.each(PLOT.getXAxes(), function(_, axis) {
+    var opts = axis.options;
+    opts.min = ranges.xaxis.from;
+    opts.max = ranges.xaxis.to;
+  });
+  CURRENT_SELECTION = PLOT.getSelection();
+  PLOT.clearSelection();
+  PLOT.setupGrid();
+  PLOT.draw();
+  $("#clear-button").show();
+}
+
+function appClearSelection() {
+  $("#clear-button").hide();
+  $("#tooltip").hide();
+  clearRevisionRange();
+  CURRENT_SELECTION = null;
+  if (!PLOT) {
+    return;
+  }
+  $.each(PLOT.getXAxes(), function(_, axis) {
+    var opts = axis.options;
+    opts.min = axis.datamin;
+    opts.max = axis.datamax;
+  });
+  PLOT.setupGrid();
+  PLOT.draw();
+}
+
+function setPlotHeight() {
+  var height_adjustment = ($("#progressbar").height() +
+                           $("#button-container").height() +
+                           $("#revisions").height() +
+                           18
+                          );
+  $("#plot").height(window.innerHeight - height_adjustment);
+  $("#legend").height(window.innerHeight - height_adjustment);
+}
+
+function makePlot(params) {
+  $("#progressbar").progressbar({ value: false });
+  $(".progresslabel").text( "Plotting..." );
+  $("#progressbar").show();
+  setTimeout(_makePlot, 100, params);
+}
+
+function _makePlot(params) {
+  var plot = $('#plot')
+  plot.off();
+  plot.html();
+  $("#clear-button").hide();
+
+  var points = getDataPoints(params);
   if (!points.data.length) {
-    $('#plot').html(ich.nodata());
+    plot.html(ich.nodata());
     $("#progressbar").hide();
     return;
   }
 
-  var no_binning = (no_series_binning == params.binning);
+  var no_binning = (NO_SERIES_BINNING == params.binning);
 
-  $.plot($('#plot'), points.data, {
+  var xaxis = {
+    mode: 'time',
+    timezone: MOUNTAIN_VIEW,
+    axisLabel: 'build date',
+    timeformat: '%b %d',
+    minTickSize: [1, 'day']
+  };
+
+  if (CURRENT_SELECTION) {
+    xaxis.min = CURRENT_SELECTION.xaxis.from;
+    xaxis.max = CURRENT_SELECTION.xaxis.to;
+    setClearButton(xaxis.min, xaxis.max);
+  }
+
+  setPlotHeight();
+
+  PLOT = $.plot(plot, points.data, {
     grid: { clickable: true },
     series: {
       points: {
@@ -446,40 +576,42 @@ function _makePlot(params, data) {
           upperCap: '-',
           lowerCap: '-'}
       },
-      lines: {show: true} // { show: params.valuetype != 'all' }
+      lines: {show: true},
     },
-    xaxis: { mode: 'time', timezone: MountainView, axisLabel: 'build date', timeformat: '%b %d',
-             minTickSize: [1, 'day'] },
+    xaxis: xaxis,
     yaxis: { min: 0, axisLabel: 'time (ms)' },
-    legend: { container: $('#legend'), hideable: true }
+    legend: { container: $('#legend'), hideable: true },
+    selection: {
+      mode: "x",
+    },
   });
 
   $("#progressbar").hide();
 
-  $('#plot').bind('plotclick',
-                  plotClick($('#plot'), function (item) {
-                    var y = item.datapoint[1];
-                    var yerr = params.valuetype == 'min' ? item.datapoint[3] : item.datapoint[2];
-                    showAllLineTooltip(item.pageX,
-                                       item.pageY,
-                                       item.datapoint[0],
-                                       item.series.vars.product,
-                                       item.series.vars.phonetype,
-                                       item.series.vars.phoneid,
-                                       item.series.vars.test_name,
-                                       item.series.vars.cached_label,
-                                       item.series.vars.metric,
-                                       points.revisions[item.series.vars.repo + item.datapoint[0]],
-                                       y,
-                                       yerr,
-                                       item.series.counts[item.dataIndex]);
-                  })
-                 );
+  plot.on('plotselected', appSetSelection);
+
+  plot.on('plotclick',
+          plotClick(plot, function (item) {
+            var y = item.datapoint[1];
+            var yerr = params.valuetype == 'min' ? item.datapoint[3] : item.datapoint[2];
+            showAllLineTooltip(item.pageX,
+                               item.pageY,
+                               item.datapoint[0],
+                               item.series.vars.product,
+                               item.series.vars.phonetype,
+                               item.series.vars.phoneid,
+                               item.series.vars.test_name,
+                               item.series.vars.cached_label,
+                               item.series.vars.metric,
+                               points.revisions[item.series.vars.repo + item.datapoint[0]],
+                               y,
+                               yerr,
+                               item.series.counts[item.dataIndex]);
+            return false;
+          }));
 }
 
-var all_data = null;
-
-function next_day(d) {
+function nextDay(d) {
   var p = d.split('-');
   return ISODateString(new Date(+p[0], +p[1]-1, +p[2]+1));
 }
@@ -489,14 +621,14 @@ function getData(start, end, params, day) {
   $.getJSON('api/s1s2/alldata/?start=' + start + '&end=' + start,
             function(data) {
               for (var key in data) {
-                all_data[key] = data[key];
+                ALL_DATA[key] = data[key];
               }
-              start = next_day(start);
+              start = nextDay(start);
               if (start < end) {
                 getData(start, end, params, day+1);
               } else {
-                meta.init = true;
-                makePlot(params, all_data);
+                INITIALIZING = true;
+                makePlot(params);
               }
             }
            );
@@ -505,25 +637,24 @@ function getData(start, end, params, day) {
 function displayGraph(load) {
   function pad(n) { return n < 10 ? '0' + n : n; }
   var params = {};
-  $.makeArray($('#controls select').each(function(i, e) { params[e.name] = e.value; }));
+  $.makeArray($('#date-controls select').each(function(i, e) { params[e.name] = e.value; }));
+  $.makeArray($('#plot-controls select').each(function(i, e) { params[e.name] = e.value; }));
   var startdatestr = $('#startdate').attr('value');
   var enddatestr = $('#enddate').attr('value');
-
-  var hash = '#/' + startdatestr + '/' + enddatestr;
+  var hash = '#/' + startdatestr + '/' + enddatestr + '/' + createQueryString(QUERY_VALUES);
   if (hash != document.location.hash) {
     document.location.hash = hash;
     return false;
   }
 
   if (load != "load") {
-    makePlot(params, all_data);
+    makePlot(params);
   } else {
-    all_data = {};
-    var days = Math.floor((new Date(enddatestr) - new Date(startdatestr))/86400000);
-    $("#progressbar").progressbar({
-      value: false
-    });
+    ALL_DATA = {};
 
+    var days = Math.floor((new Date(enddatestr) - new Date(startdatestr))/86400000);
+
+    $("#progressbar").progressbar({ value: false });
     $(".progresslabel").text( "Loading..." );
     $("#progressbar").show();
     $("#progressbar").progressbar("option", "max", days);
@@ -534,23 +665,59 @@ function displayGraph(load) {
 }
 
 function loadGraph() {
+  appClearSelection();
   return displayGraph("load");
 }
 
-function setControls(startdate, enddate) {
+function setControls(startdate, enddate, querystring) {
+  var date_changed = false;
   if (!startdate) {
     $('#period option[value="1"]').attr('selected', true);
     periodChanged();
+    date_changed = true;
   } else {
-    $('#startdate').attr('value', startdate);
+    if (startdate != STARTDATE) {
+      $('#startdate').attr('value', startdate);
+      date_changed = true;
+    }
     if (enddate) {
-      $('#enddate').attr('value', enddate);
+      if (enddate != ENDDATE) {
+        $('#enddate').attr('value', enddate);
+        date_changed = true;
+      }
     } else {
       $('#enddate').attr('value', ISODateString(makeMountainViewDate()));
+      date_changed = true;
     }
-    dateChanged();
+    if (date_changed) {
+      dateChanged();
+    }
   }
-  loadGraph();
+  STARTDATE = $('#startdate').attr('value');
+  ENDDATE = $('#enddate').attr('value');
+
+  QUERY_VALUES = parseQueryString(querystring);
+  $('#plot-controls select').each(function(i) {
+    if (this.name in QUERY_VALUES) {
+      $(this).val(QUERY_VALUES[this.name]);
+    }
+  });
+  $('#plot-controls input[type="checkbox"]').each(function(i) {
+    if (this.name in QUERY_VALUES) {
+      $(this).prop('checked', QUERY_VALUES[this.name] == 'on');
+    }
+  });
+
+  // Occasionally, clicking Apply then reloading
+  // the page will result in an unchanged date but
+  // even though the hasn't loaded. Work around it
+  // by checking if we have loaded data for this
+  // date range.
+  if (date_changed || ALL_DATA === null) {
+    setTimeout(loadGraph, 100);
+  } else {
+    setTimeout(displayGraph, 100);
+  }
 }
 
 function ISODateString(d) {
@@ -583,13 +750,52 @@ function dateChanged() {
   }
 }
 
+function parseQueryString(querystring) {
+  var values = {};
+  var name;
+  var value;
+  if (!querystring) {
+    return values;
+  }
+  if (querystring.indexOf('?') == 0) {
+    querystring = querystring.substring(1);
+  }
+  var parts = querystring.split('&');
+  for (var ipart = 0; ipart < parts.length; ipart++) {
+    var namevalue = parts[ipart].split('=');
+    name = decodeURIComponent(namevalue[0]);
+    name = name.replace(/[+]/g, ' ');
+    value = namevalue.length == 1 ? undefined : decodeURIComponent(namevalue[1]);
+    value = value.replace(/[+]/g, ' ');
+    if (name in values) {
+      values[name] = values[name].concat(value);
+    }
+    else {
+      values[name] = [value];
+    }
+  }
+  for (name in values) {
+    if (values[name].length == 1) {
+      values[name] = values[name][0];
+    }
+  }
+  return values;
+}
+
+function createQueryString(obj) {
+  var a = [];
+  for (var key in obj) {
+    a.push(encodeURIComponent(key) + '=' + encodeURIComponent(obj[key]).replace(/%2B/g, '+'));
+  }
+  return a.join('&');
+}
+
 function main() {
-  var doc_h = $(document).height();
-  var plot_h = Math.floor(doc_h * 0.90);
-  var forms_h = $("#forms").height();
-  var legend_h = plot_h > forms_h ? (plot_h - forms_h) : 600;
-  $("#plot").height(plot_h);
-  $("#legend").height(legend_h);
+  $("#container").height(window.innerHeight);
+  $("#plot-area").height(window.innerHeight);
+  setPlotHeight();
+  $("#legend").height(window.innerHeight);
+  $("#progressbar").width($("#plot").width() - 18);
 
   // Configure date controls.
   $.datepicker.setDefaults({
@@ -598,24 +804,56 @@ function main() {
     buttonImageOnly: true,
     dateFormat: 'yy-mm-dd'
   });
+
   $('#startdate').datepicker();
   $('#enddate').datepicker();
-
   $('#period').on('change', periodChanged);
 
-  $.getJSON('api/s1s2/info/', function(data) {
-    $('#apply').on('click', displayGraph);
-    $('#controls .date').on('change', loadGraph);
-    $('#period').on('change', loadGraph);
-    $('#controls').on('submit', function() { return false; });
-    // FIXME: is there a better way to set up routes with generic arguments?
-    var router = Router({
+  $('#apply').on('click', function (event) {
+    var hash = ('#/' +
+                $('#startdate').attr('value') + '/' +
+                $('#enddate').attr('value') + '/' +
+                $('#plot-controls').serialize());
+    if (hash != document.location.hash) {
+      document.location.hash = hash;
+    }
+  });
+  $('#reset').on('click', function (event) {
+    $('#plot-controls input[type="checkbox"]').each(function(i) {
+      if ('try,trim'.indexOf(this.name) == -1) {
+        $(this).prop('checked', true);
+      }
+    });
+    var hash = ('#/' +
+                $('#startdate').attr('value') + '/' +
+                $('#enddate').attr('value') + '/' +
+                $('#plot-controls').serialize());
+    if (hash != document.location.hash) {
+      document.location.hash = hash;
+    }
+  });
+  $("#clear-button").click(appClearSelection);
+  $('#date-controls .date').on('change', loadGraph);
+  $('#period').on('change', loadGraph);
+  $('#date-controls').on('submit', function(event) { return false; });
+  $('#plot-controls').on('submit', function(event) { return false; });
+  $('body').on('click', function (event) {
+    if (event.target.nodeName != 'CANVAS') {
+      $('#tooltip').remove();
+    }
+  });
+  // FIXME: is there a better way to set up routes with generic arguments?
+  var router = Router(
+    {
       '/([^/]*)': {
         '/([^/]*)': {
+          '/([^/]*)': {
+            on: setControls
+          },
           on: setControls
         },
         on: setControls
-      },
+      }
     }).init('/');
-  });
+  //  });
 }

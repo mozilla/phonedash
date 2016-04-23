@@ -72,14 +72,14 @@ function updateRevisionRange() {
     $("#rev1").html('From: <a href="' + rev1 + '" target="rev1">' + rev1 + '</a>');
   }
   else {
-    $("#rev1").html('');
+    $("#rev1").html('&nbsp;');
   }
   if (tooltip_data_2) {
     rev2 = tooltip_data_2.revision_url;
     $("#rev2").html('To: <a href="' + rev2 + '" target="rev2">' + rev2 + '</a>');
   }
   else {
-    $("#rev2").html('');
+    $("#rev2").html('&nbsp;');
   }
 
   if (tooltip_data_1 && tooltip_data_2) {
@@ -89,9 +89,14 @@ function updateRevisionRange() {
                        pushlog + '</a>');
   }
   else {
-    $("#pushlog").html('');
+    $("#pushlog").html('&nbsp;');
   }
+}
 
+function clearRevisionRange() {
+  tooltip_data_1 = null;
+  tooltip_data_2 = null;
+  updateRevisionRange();
 }
 
 function showLineTooltip(x, y, timestamp, product, phone, revision, value, valueerr, count) {
@@ -151,36 +156,46 @@ function showAllLineTooltip(x, y, timestamp, product, phonetype, phone, test_nam
   params.url = revision;
   var content = ich.flot_tooltip(params);
 
-  $(content).css({
-    top: y + 5,
-    left: x + 5
-  }).appendTo('body');
+  var tooltip = $(content).css({
+    display: "none",
+  }).appendTo('body').draggable();
+
+  var plot_offset = PLOT.offset();
+  var tooltip_offset = tooltip.offset();
+  var h = tooltip.height();
+  var w = tooltip.width();
+
+  x += 5;
+  y += 5;
+
+  if (x + w > plot_offset.left + PLOT.width()) {
+    x = plot_offset.left + PLOT.width() - w;
+  }
+  if (y + h > plot_offset.top + PLOT.height()) {
+    y = plot_offset.top + PLOT.height() - h;
+  }
+
+  tooltip.css({
+    display: "block",
+    top: y,
+    left: x
+  });
 }
 
 
 // calls toolTipFn when we detect that the current selection has changed
 function plotClick(selector, toolTipFn) {
   var previousPoint = null;
-  var prevX = 0;
-  var prevY = 0;
   return function(event, pos, item) {
     if (item) {
       if (previousPoint != item.datapoint) {
         previousPoint = item.datapoint;
-        prevX = pos.pageX;
-        prevY = pos.pageY;
-        $('.tooltip').remove();
+        $('#tooltip').remove();
         toolTipFn(item);
       }
-    } else {
-      if (previousPoint &&
-          (pos.pageX < (prevX - 5) ||
-           pos.pageX > (prevX + 10 + $('.tooltip').width()) ||
-           pos.pageY < (prevY - 5) ||
-           pos.pageY > (prevY + 10 + $('.tooltip').height()))) {
-        $('.tooltip').remove();
+    } else if (previousPoint) {
+        $('#tooltip').remove();
         previousPoint = null;
-      }
     }
   };
 }

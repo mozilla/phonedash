@@ -11,18 +11,34 @@ body {
 }
 
 #plot {
+    height: 100%;
+    width: 100%;
 }
 
-.tooltip {
+#container {
+    height: 100%;
+    width: 100%;
+}
+
+#tooltip {
   position: absolute;
   border: 1px solid #fdd;
   padding: 2px;
   background-color: #fee;
   opacity: 0.80;
+  cursor: grab;
 }
 
 input, textarea, select, .uneditable-input {
-  width: 170px;
+ /* width: 170px; */
+}
+
+#plot-area { margin: auto; width: 100%;}
+
+#revisions {height: 3em;}
+
+td {
+    vertical-align: top;
 }
 
 input[type=text] {
@@ -33,6 +49,32 @@ input[type=text] {
   font-size: smaller;
 }
 
+#controls {
+    border: 1px solid black;
+}
+
 #legend {
+    width: 20em;
   overflow-y: auto;
+}
+
+#progressbar {
+    position: relative;
+}
+
+.progresslabel {
+  position: absolute;
+  left: 50%;
+  top: 0.5em;
+  font-weight: bold;
+  text-shadow: 1px 1px 0 #fff;
+}
+
+#button_container {
+  position: relative;
+  margin: auto;
+}
+
+#clear-button {
+  display: none;
 }
