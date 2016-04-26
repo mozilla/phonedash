@@ -11,6 +11,7 @@ var META = {
   metrics: {throbberstart: true, throbberstop: true, throbbertime: true},
 };
 
+var TRANSLATED_URL = false;
 var INITIALIZING = true;
 var QUERY_VALUES = {};
 var MOUNTAIN_VIEW = 'America/Los_Angeles';
@@ -50,7 +51,7 @@ function getStatistics(values) {
     statistics.geometric_mean = Math.exp(gsum / values.length) - 1; // subtract 1 to remove 1 added above
     sum = 0;
     for (i = 0; i < values.length; i++) {
-      sum += (values[i] - statistics.mean)**2;
+      sum += Math.pow(values[i] - statistics.mean, 2);
     }
     statistics.stddev = Math.sqrt(sum/(values.length-1.5));
     statistics.stderr = statistics.stddev/Math.sqrt(values.length);
@@ -211,9 +212,15 @@ function getDataPoints(params) {
   var have_query_values = Object.keys(QUERY_VALUES).length > 0;
   if (have_query_values) {
     $('#plot-controls input[type="checkbox"]').each(function(i) {
-      $(this).prop('checked', this.name in QUERY_VALUES );
+      if ( $(this).attr('phone_class') && TRANSLATED_URL) {
+        // When loading translated urls, force the phones on.
+        $(this).prop('checked', true );
+      } else {
+        $(this).prop('checked', this.name in QUERY_VALUES );
+      }
     });
   }
+  TRANSLATED_URL = false;
 
   if (INITIALIZING) {
     // Now we can sync our hash with the loaded values.
@@ -790,7 +797,128 @@ function createQueryString(obj) {
   return a.join('&');
 }
 
+function translatePhonedashUrl() {
+  /*
+   * Translate old style phonedash urls to the version supported by
+   * this page.
+   * from
+   * #/product/metric/test_name/CCYY-MM-DD/CCYY-MM-DD/cached/errorbars/standarderror
+   * #/product/metric/test_name/rejected/CCYY-MM-DD/CCYY-MM-DD/cached/errorbars/standarderror
+   * #/product/metric/test_name/rejected/CCYY-MM-DD/CCYY-MM-DD/cached/errorbars/standarderror/try
+   * #/product/metric/test_name/rejected/CCYY-MM-DD/CCYY-MM-DD/cached/errorbars/standarderror/try/mean
+   * to
+   * #/startdate/enddate/querystring
+   * where querystring is the url encoded values of the form elements.
+   */
+
+  var parts = document.location.hash.split('/');
+  if (parts.length >= 9 && parts.length <= 12) {
+    TRANSLATED_URL = true;
+    var startdate;
+    var enddate;
+    var cached;
+    var cached_name;
+    var querystring;
+
+    QUERY_VALUES['binning'] = NO_SERIES_BINNING;
+
+    switch (parts[1]) {
+    case 'org.mozilla.fennec':
+      QUERY_VALUES['mozilla-inbound'] = 'on';
+      QUERY_VALUES['mozilla-central'] = 'on';
+      QUERY_VALUES['b2g-inbound']     = 'on';
+      QUERY_VALUES['fx-team']         = 'on';
+      break;
+
+    case 'org.mozilla.fennec_aurora':
+      QUERY_VALUES['mozilla-aurora']  = 'on';
+      break;
+
+    case 'org.mozilla.fennec_beta':
+      QUERY_VALUES['mozilla-beta']    = 'on';
+      break;
+
+    case 'org.mozilla.firefox':
+      QUERY_VALUES['mozilla-release'] = 'on';
+      break;
+
+    default:
+      QUERY_VALUES['mozilla-inbound'] = 'on';
+      QUERY_VALUES['mozilla-central'] = 'on';
+      QUERY_VALUES['try']             = 'on';
+      QUERY_VALUES['b2g-inbound']     = 'on';
+      QUERY_VALUES['fx-team']         = 'on';
+      break;
+    }
+
+    QUERY_VALUES[parts[2]]         = 'on'; // metric
+    QUERY_VALUES[parts[3]]         = 'on'; // testname
+
+    switch(parts.length) {
+    case 9:
+      // #/product/metric/test_name/CCYY-MM-DD/CCYY-MM-DD/cached/errorbars/standarderror
+      startdate                    = parts[4];
+      enddate                      = parts[5];
+      cached                       = parts[6];
+      QUERY_VALUES['errorbars']    = parts[7];
+      QUERY_VALUES['errorbartype'] = parts[8];
+      break;
+
+    case 10:
+      // #/product/metric/test_name/rejected/CCYY-MM-DD/CCYY-MM-DD/cached/errorbars/standarderror
+      QUERY_VALUES['rejected']     = parts[4];
+      startdate                    = parts[5];
+      enddate                      = parts[6];
+      cached                       = parts[7];
+      QUERY_VALUES['errorbars']    = parts[8];
+      QUERY_VALUES['errorbartype'] = parts[9];
+      break;
+
+    case 11:
+      // #/product/metric/test_name/rejected/CCYY-MM-DD/CCYY-MM-DD/cached/errorbars/standarderror/try
+      QUERY_VALUES['rejected']     = parts[4];
+      startdate                    = parts[5];
+      enddate                      = parts[6];
+      cached                       = parts[7];
+      QUERY_VALUES['errorbars']    = parts[8];
+      QUERY_VALUES['errorbartype'] = parts[9];
+
+      if (parts[10] == 'try') {
+        QUERY_VALUES['try']        = 'on';
+      }
+      break;
+
+    case 12:
+      // #/product/metric/test_name/rejected/CCYY-MM-DD/CCYY-MM-DD/cached/errorbars/standarderror/try/mean
+      QUERY_VALUES['rejected']     = parts[4];
+      startdate                    = parts[5];
+      enddate                      = parts[6];
+      cached                       = parts[7];
+      QUERY_VALUES['errorbars']    = parts[8];
+      QUERY_VALUES['errorbartype'] = parts[9];
+
+      if (parts[10] == 'try') {
+        QUERY_VALUES['try']        = 'on';
+      }
+
+      QUERY_VALUES['valuetype']    = parts[11];
+      break;
+    }
+
+    if (cached == 'notcached') {
+      cached_name = 'first';
+    } else {
+      cached_name = 'second';
+    }
+    QUERY_VALUES[cached_name]      = 'on';
+
+    querystring = '/' + startdate + '/' + enddate + '/' + createQueryString(QUERY_VALUES);
+    document.location.hash = '#' + querystring;
+  }
+}
+
 function main() {
+  translatePhonedashUrl();
   $("#container").height(window.innerHeight);
   $("#plot-area").height(window.innerHeight);
   setPlotHeight();
@@ -842,7 +970,6 @@ function main() {
       $('#tooltip').remove();
     }
   });
-  // FIXME: is there a better way to set up routes with generic arguments?
   var router = Router(
     {
       '/([^/]*)': {
@@ -855,5 +982,4 @@ function main() {
         on: setControls
       }
     }).init('/');
-  //  });
 }
