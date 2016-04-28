@@ -2,17 +2,11 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this file,
  * You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var META = {
-  phones: {},
-  tests: {},
-  repos: {},
-  trimming: {trim: false},
-  cached: {first: true, second: true},
-  metrics: {throbberstart: true, throbberstop: true, throbbertime: true},
-};
+var META = null;
+var INITIALIZING = null;
 
+var SUPPRESS_REPLOT = false;
 var TRANSLATED_URL = false;
-var INITIALIZING = true;
 var QUERY_VALUES = {};
 var MOUNTAIN_VIEW = 'America/Los_Angeles';
 var NO_SERIES_BINNING = 'repo-phonetype-phoneid-test_name-cached_label-metric';
@@ -123,7 +117,7 @@ function loadOptions() {
                  value + '<br/>');
       } else {
         // do not automatically display try results
-        checked = (option != 'repos' || option == 'repos' && value != 'try') ? 'checked="checked"' : '';
+        checked = (option != 'trim' && (option != 'repos' || value != 'try')) ? 'checked="checked"' : '';
         html += ('<input type="checkbox" class="noload" ' + checked + ' ' +
                  'id="' + value + '" ' +
                  'name="' + value + '" />' +
@@ -131,6 +125,7 @@ function loadOptions() {
       }
     }
     $('#' + option).html(html);
+    OPTIONS_LOADED = true;
   }
 }
 
@@ -173,7 +168,25 @@ function getDataPoints(params) {
   var build_time_key;
   var data_hash_list;
 
+  if (console) {
+    console.time('getDataPoints: META...');
+  }
+
   if (INITIALIZING) {
+    /*
+      We are creating META and loading the option checkboxes from
+      ALL_DATA.  INITIALIZING is set to true by getData when it begins
+      loading results into ALL_DATA.
+    */
+    META = {
+      phones: {},
+      tests: {},
+      repos: {},
+      trimming: {trim: false},
+      cached: {first: true, second: true},
+      metrics: {throbberstart: true, throbberstop: true, throbbertime: true},
+    };
+
     // We are creating the plot control checkboxes. They
     // will be checked initially.
     for (revision in ALL_DATA) {
@@ -185,6 +198,7 @@ function getDataPoints(params) {
       } else {
         repo = 'unknown';
       }
+      revision_object.repo = repo;
 
       if (!(repo in META.repos)) {
         META.repos[repo] = true;
@@ -207,43 +221,65 @@ function getDataPoints(params) {
     loadOptions();
   }
 
-  // We've already added the checkbox controls, so all we have to
-  // do now is sync them with the query.
-  var have_query_values = Object.keys(QUERY_VALUES).length > 0;
-  if (have_query_values) {
-    $('#plot-controls input[type="checkbox"]').each(function(i) {
-      if ( $(this).attr('phone_class') && TRANSLATED_URL) {
-        // When loading translated urls, force the phones on.
-        $(this).prop('checked', true );
-      } else {
-        $(this).prop('checked', this.name in QUERY_VALUES );
-      }
-    });
+  if (console) {
+    console.timeEnd('getDataPoints: META...');
   }
+
+  // The newly added checkboxes are checked by default. Now decide
+  // whether they should be checked or not. If there was no data
+  // previously, we will leave them checked.
+
+  // We are either displaying data for the first time or have
+  // previously displayed data in the graph. Handle translated urls
+  // by checking each checkbox otherwise make sure to sync the
+  // input's checked property and QUERY_VALUES.
+  var have_query_values = Object.keys(QUERY_VALUES).length > 0;
+  $('#plot-controls input[type="checkbox"]').each(function(i) {
+    if (TRANSLATED_URL && $(this).attr('phone_class')) {
+      // Automatically check phones from a translated url.
+      $(this).prop('checked', true );
+      QUERY_VALUES[this.name] = 'on';
+    } else if (this.name in QUERY_VALUES) {
+      $(this).prop('checked', this.name in QUERY_VALUES);
+    } else if (INITIALIZING && ! have_query_values ) {
+      // We have previously created the options and with the exception
+      // of try and trim are now turning them off if they haven't been
+      // explicitly set by the QUERY_VALUES or by the url translation.
+      if ('try,trim'.indexOf(this.name) == -1) {
+        QUERY_VALUES[this.name] = 'on';
+      }
+    } else {
+      // We have previously created the options and are now turning
+      // them off if they haven't been explicitly set by the
+      // QUERY_VALUES or by the url translation.
+      $(this).prop('checked', false);
+    }
+  });
+
+  INITIALIZING = false;
   TRANSLATED_URL = false;
 
-  if (INITIALIZING) {
-    // Now we can sync our hash with the loaded values.
-    var querystring = $('#plot-controls').serialize();
-    QUERY_VALUES = parseQueryString(querystring);
-    var hash = ('#/' +
-                $('#startdate').attr('value') + '/' +
-                $('#enddate').attr('value') + '/' +
-                $('#plot-controls').serialize());
+  // Check if the hash has changed due to our manipulations.
+  var hash = ('#/' +
+              $('#startdate').attr('value') + '/' +
+              $('#enddate').attr('value') + '/' +
+              createQueryString(QUERY_VALUES));
+  if (hash != document.location.hash) {
+    // The hash has changed, but we don't want to redraw the graph.
+    SUPPRESS_REPLOT = true;
     document.location.hash = hash;
-    INITIALIZING = false;
   }
 
+  if (console) {
+    console.time('getDataPoints: all_series...');
+  }
+
+  // now filter ALL_DATA according to the controls
   for (revision in ALL_DATA) {
     revision_object = ALL_DATA[revision];
+    var productname = revision_object.productname;
 
-    repoCaptures = reRepo.exec(revision);
-    if (repoCaptures) {
-      repo = repoCaptures[1];
-    } else {
-      repo = 'unknown';
-    }
-
+    repo = revision_object.repo;
     if (!isChecked(repo)) {
       continue;
     }
@@ -251,9 +287,11 @@ function getDataPoints(params) {
     for (run_key in revision_object.runs) {
       run_object = revision_object.runs[run_key];
 
-      if (!isChecked(run_object.phoneid)) {
+      var phoneid = run_object.phoneid;
+      if (!isChecked(phoneid)) {
         continue;
       }
+      var phonetype = phoneid.replace(/-[0-9]+$/, '');
 
       if (run_object.rejected == 1 && params.rejected == 'norejected') {
         continue;
@@ -262,11 +300,7 @@ function getDataPoints(params) {
       // The blddate stored in phonedash is in UTC.  Force blddate to
       // be parsed as UTC then convert to Mountain View time.
       build_time = makeMountainViewDate(run_object.blddate + '+00:00').getTime();
-      if (CURRENT_SELECTION &&
-          (build_time < CURRENT_SELECTION.xaxis.from ||
-           build_time > CURRENT_SELECTION.xaxis.to))  {
-        continue;
-      }
+
       // return a mapping of repo + build_time to revision for use in the tooltip.
       revisions[repo + build_time] = revision;
 
@@ -297,9 +331,9 @@ function getDataPoints(params) {
             }
             var vars = {
               repo: repo,
-              product: revision_object.productname,
-              phonetype: run_object.phoneid.replace(/-[0-9]+$/, ''),
-              phoneid: run_object.phoneid,
+              product: productname,
+              phonetype: phonetype,
+              phoneid: phoneid,
               test_name: test_name,
               cached_label: cached_label,
               metric: metric,
@@ -373,6 +407,14 @@ function getDataPoints(params) {
         }
       }
     }
+  }
+
+  if (console) {
+    console.timeEnd('getDataPoints: all_series...');
+  }
+
+  if (console) {
+    console.time('getDataPoints: plot_all_series...');
   }
 
   var plot_all_series;
@@ -475,6 +517,10 @@ function getDataPoints(params) {
     }
   });
 
+  if (console) {
+    console.timeEnd('getDataPoints: plot_all_series...');
+  }
+
   return { data: plotdata, revisions: revisions };
 }
 
@@ -543,13 +589,21 @@ function makePlot(params) {
 function _makePlot(params) {
   var plot = $('#plot')
   plot.off();
-  plot.html();
+  plot.html('');
   $("#clear-button").hide();
 
   var points = getDataPoints(params);
   if (!points.data.length) {
     plot.html(ich.nodata());
+    $("#legend").html('');
     $("#progressbar").hide();
+    if (!ALL_DATA || Object.keys(ALL_DATA).length == 0) {
+      $("#tests").html('');
+      $("#metrics").html('');
+      $("#cached").html('');
+      $("#repos").html('');
+      $("#phones").html('');
+    }
     return;
   }
 
@@ -571,6 +625,10 @@ function _makePlot(params) {
 
   setPlotHeight();
 
+  if (console) {
+    console.time('Plotting...');
+  }
+
   PLOT = $.plot(plot, points.data, {
     grid: { clickable: true },
     series: {
@@ -591,7 +649,12 @@ function _makePlot(params) {
     selection: {
       mode: "x",
     },
+    shadowSize: 0, // no shadows
   });
+  if (console) {
+    console.timeEnd('Plotting...');
+  }
+
 
   $("#progressbar").hide();
 
@@ -677,6 +740,11 @@ function loadGraph() {
 }
 
 function setControls(startdate, enddate, querystring) {
+  if (SUPPRESS_REPLOT) {
+    SUPPRESS_REPLOT = false;
+    return;
+  }
+
   var date_changed = false;
   if (!startdate) {
     $('#period option[value="1"]').attr('selected', true);
