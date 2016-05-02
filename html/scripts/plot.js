@@ -99,36 +99,7 @@ function clearRevisionRange() {
   updateRevisionRange();
 }
 
-function showLineTooltip(x, y, timestamp, product, phone, revision, value, valueerr, count) {
-  var tooltip_data = new TooltipData(timestamp, product, phone, revision);
-  if (tooltip_data.is_later(tooltip_data_1)) {
-    tooltip_data_2 = tooltip_data;
-  }
-  else {
-    tooltip_data_1 = tooltip_data;
-    tooltip_data_2 = null;
-  }
-  updateRevisionRange();
-  var params = {
-    date: dateStr(new Date(Math.floor(timestamp))),
-    value: Math.floor(value),
-    valueerr: '&plusmn;' + Math.floor(valueerr),
-    phone: phone,
-    revision: tooltip_data.revisionId,
-    url: '',
-    count: count
-  };
-  params.url = revision;
-  var content = ich.flot_tooltip(params);
-
-  $(content).css({
-    top: y + 5,
-    left: x + 5
-  }).appendTo('body');
-}
-
-
-function showAllLineTooltip(x, y, timestamp, product, phonetype, phone, test_name, cached_label, metric, revision, value, valueerr, count) {
+function showLineTooltip(x, y, timestamp, product, phonetype, phone, test_name, cached_label, metric, revision, value, valueerr, count) {
   var tooltip_data = new TooltipData(timestamp, product, phone, revision);
   if (tooltip_data.is_later(tooltip_data_1)) {
     tooltip_data_2 = tooltip_data;
