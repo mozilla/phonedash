@@ -167,6 +167,7 @@ function plotClick(selector, toolTipFn) {
     } else if (previousPoint) {
         $('#tooltip').remove();
         previousPoint = null;
+        clearRevisionRange();
     }
   };
 }
