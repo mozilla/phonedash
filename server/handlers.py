@@ -75,7 +75,7 @@ def get_stats(values):
 
 
 def is_clean(s):
-    return bool(re.match('(https?://)?[/\w\.\- ]*$', s))
+    return bool(re.match('(https?://)?[/\w\.\- @]*$', s))
 
 
 class S1S2RawFennecAddResult():
@@ -115,8 +115,8 @@ class S1S2RawFennecAddResult():
                 (r, traceback.format_exc()))
             raise web.badrequest()
 
-        for key in ('phoneid', 'testname', 'revision', 'bldtype', 'productname',
-                    'productversion', 'osver', 'machineid'):
+        for key in ('phoneid', 'testname', 'revision', 'author', 'bldtype',
+                    'productname', 'productversion', 'osver', 'machineid'):
             if not is_clean(r['data'][key]):
                 print >> web.webapi.debug, (
                     'Request %s: %s %s is not clean' % (
@@ -310,7 +310,7 @@ class S1S2RawAllFennecData(object):
         start = startdate.isoformat(' ')[0:-6]
         end = enddate.isoformat(' ')[0:-6]
 
-        what = ('revision,bldtype,blddate,phoneid,rejected,testname,starttime,'
+        what = ('revision,author,bldtype,blddate,phoneid,rejected,testname,starttime,'
                 'throbberstart,throbberstop,cached,productname,productversion,'
                 'osver,machineID')
 
@@ -327,6 +327,7 @@ class S1S2RawAllFennecData(object):
             '<revision>' : {
                 'productname': '...',
                 'productversion': '...',
+                'author': '...',
                 'runs': {
                     '<bldtype>:<blddate>:<phoneid>:<rejected>': {
                         'bldtype': '...',
@@ -361,6 +362,7 @@ class S1S2RawAllFennecData(object):
                 result = {
                     'productname': row['productname'],
                     'productversion': row['productversion'],
+                    'author': row['author'],
                     'runs': {},
                     }
                 results[row['revision']] = result

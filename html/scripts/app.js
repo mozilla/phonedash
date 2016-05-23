@@ -117,7 +117,7 @@ function loadOptions() {
                  value + '<br/>');
       } else {
         // do not automatically display try results
-        checked = (option != 'trim' && (option != 'repos' || value != 'try')) ? 'checked="checked"' : '';
+        checked = (option != 'trim' && (option != 'repos' || value.indexOf('try') != 0)) ? 'checked="checked"' : '';
         html += ('<input type="checkbox" class="noload" ' + checked + ' ' +
                  'id="' + value + '" ' +
                  'name="' + value + '" />' +
@@ -192,11 +192,16 @@ function getDataPoints(params) {
     for (revision in ALL_DATA) {
       revision_object = ALL_DATA[revision];
 
+      var author = revision_object.author;
+
       repoCaptures = reRepo.exec(revision);
       if (repoCaptures) {
         repo = repoCaptures[1];
       } else {
         repo = 'unknown';
+      }
+      if (repo == 'try' && author) {
+        repo = repo + '-' + author.substring(0, author.indexOf('@'));
       }
       revision_object.repo = repo;
 

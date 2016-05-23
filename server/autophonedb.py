@@ -50,6 +50,7 @@ if not table_exists_query:
             cached BOOLEAN, \
             blddate ' + DATETIME + ' NOT NULL, \
             revision VARCHAR(255),\
+            author VARCHAR(255),\
             bldtype CHAR(10),\
             productname CHAR(80),\
             productversion CHAR(25),\
