@@ -117,7 +117,7 @@ class S1S2RawFennecAddResult():
 
         for key in ('phoneid', 'testname', 'revision', 'author', 'bldtype',
                     'productname', 'productversion', 'osver', 'machineid'):
-            if not is_clean(r['data'][key]):
+            if r['data'][key] and not is_clean(r['data'][key]):
                 print >> web.webapi.debug, (
                     'Request %s: %s %s is not clean' % (
                         r['data'], key, r['data'][key]))
