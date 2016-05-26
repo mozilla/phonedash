@@ -250,7 +250,7 @@ function getDataPoints(params) {
       // We have previously created the options and with the exception
       // of try and trim are now turning them off if they haven't been
       // explicitly set by the QUERY_VALUES or by the url translation.
-      if ('try,trim'.indexOf(this.name) == -1) {
+      if (this.name != 'trim' && this.name.indexOf('try') == -1) {
         QUERY_VALUES[this.name] = 'on';
       }
     } else {
