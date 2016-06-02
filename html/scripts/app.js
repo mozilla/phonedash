@@ -692,6 +692,11 @@ function nextDay(d) {
 }
 
 function getData(start, end, params, day) {
+  if (start > end) {
+    INITIALIZING = true;
+    makePlot(params);
+    return;
+  }
   $("#progressbar").progressbar("option", {value: day});
   $.getJSON('api/s1s2/alldata/?start=' + start + '&end=' + start,
             function(data) {
@@ -699,7 +704,7 @@ function getData(start, end, params, day) {
                 ALL_DATA[key] = data[key];
               }
               start = nextDay(start);
-              if (start < end) {
+              if (start <= end) {
                 getData(start, end, params, day+1);
               } else {
                 INITIALIZING = true;
