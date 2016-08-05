@@ -19,7 +19,6 @@ from jot import jwt, jws
 import autophonedb
 
 tz_utc = pytz.timezone('UTC')
-tz_pac = pytz.timezone('America/Los_Angeles')
 
 # "/api/" is automatically prepended to each of these
 urls = (
@@ -205,15 +204,11 @@ class S1S2RawFennecData(object):
         query, body = templeton.handlers.get_request_parms()
         test = query['test'][0]
         rejected = query['rejected'][0] == 'rejected'
-        # query dates are in America/Los_Angeles timezone.
-        # convert them to datetime values in tz_pac.
+        # query dates are in UTC timezone.
         startdate = datetime.strptime(query['start'][0], '%Y-%m-%d')
         enddate = datetime.strptime(query['end'][0], '%Y-%m-%d')
-        startdate = tz_pac.localize(startdate)
-        enddate = tz_pac.localize(enddate)
-        # convert the datetimes to utc.
-        startdate = startdate.astimezone(tz_utc)
-        enddate = enddate.astimezone(tz_utc)
+        startdate = tz_utc.localize(startdate)
+        enddate = tz_utc.localize(enddate)
         # add one day to the end datedate so we capture the full end day.
         # e.g. if the user gives an end day of 2012-01-01, we want
         # everything on that day, so really we want everything before
@@ -250,9 +245,7 @@ class S1S2RawFennecData(object):
                       cached=cached, rejected=rejected))
 
         for d in data:
-            blddate = d['blddate']
-            if not isinstance(blddate, datetime):
-                blddate = datetime.strptime(blddate, '%Y-%m-%d %H:%M:%S')
+            blddate = tz_utc.localize(d['blddate'])
             r = results[d['phoneid']][test][metric][blddate.isoformat()]
             if metric == 'totalthrobber':
                 offsettime = 0
@@ -292,15 +285,11 @@ class S1S2RawAllFennecData(object):
     @templeton.handlers.json_response
     def GET(self):
         query, body = templeton.handlers.get_request_parms()
-        # query dates are in America/Los_Angeles timezone.
-        # convert them to datetime values in tz_pac.
+        # query dates are in UTC timezone.
         startdate = datetime.strptime(query['start'][0], '%Y-%m-%d')
         enddate = datetime.strptime(query['end'][0], '%Y-%m-%d')
-        startdate = tz_pac.localize(startdate)
-        enddate = tz_pac.localize(enddate)
-        # convert the datetimes to utc.
-        startdate = startdate.astimezone(tz_utc)
-        enddate = enddate.astimezone(tz_utc)
+        startdate = tz_utc.localize(startdate)
+        enddate = tz_utc.localize(enddate)
         # add one day to the end datedate so we capture the full end day.
         # e.g. if the user gives an end day of 2012-01-01, we want
         # everything on that day, so really we want everything before
@@ -371,7 +360,7 @@ class S1S2RawAllFennecData(object):
             if run_key not in runs:
                 run = {
                     'bldtype': row['bldtype'],
-                    'blddate': row['blddate'],
+                    'blddate': tz_utc.localize(row['blddate']),
                     'phoneid': row['phoneid'],
                     'osver': row['osver'],
                     'rejected': row['rejected'],

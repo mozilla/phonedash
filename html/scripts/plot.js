@@ -10,13 +10,14 @@ $(function() {
 
 function dateStr(d) {
   function pad(n) { return n < 10 ? '0' + n : n; }
-  d = new timezoneJS.Date(d, 'America/Los_Angeles');
-  return d.getFullYear() +
-    '-' + pad(d.getMonth() + 1) +
-    '-' + pad(d.getDate()) +
-    ' ' + pad(d.getHours()) +
-    ':' + pad(d.getMinutes()) +
-    ':' + pad(d.getSeconds());
+  d = new timezoneJS.Date(d, 'Etc/UTC');
+  return d.getUTCFullYear() +
+    '-' + pad(d.getUTCMonth() + 1) +
+    '-' + pad(d.getUTCDate()) +
+    ' ' + pad(d.getUTCHours()) +
+    ':' + pad(d.getUTCMinutes()) +
+    ':' + pad(d.getUTCSeconds()) +
+    'Z';
 }
 
 // Keep track of most recent data points which have been selected by the

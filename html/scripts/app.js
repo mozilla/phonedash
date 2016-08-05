@@ -8,7 +8,7 @@ var INITIALIZING = null;
 var SUPPRESS_REPLOT = false;
 var TRANSLATED_URL = false;
 var QUERY_VALUES = {};
-var MOUNTAIN_VIEW = 'America/Los_Angeles';
+var TIMEZONE = 'Etc/UTC';
 var NO_SERIES_BINNING = 'repo-phonetype-phoneid-test_name-cached_label-metric';
 var STARTDATE = null;
 var ENDDATE = null;
@@ -64,11 +64,11 @@ function getStatistics(values) {
   return statistics;
 }
 
-function makeMountainViewDate(s) {
+function makeUTCDate(s) {
   if (!s) {
     s = new Date();
   }
-  return new timezoneJS.Date(s, MOUNTAIN_VIEW);
+  return new timezoneJS.Date(s, TIMEZONE);
 }
 
 function togglePhones(phone_class_checkbox) {
@@ -304,7 +304,7 @@ function getDataPoints(params) {
 
       // The blddate stored in phonedash is in UTC.  Force blddate to
       // be parsed as UTC then convert to Mountain View time.
-      build_time = makeMountainViewDate(run_object.blddate + '+00:00').getTime();
+      build_time = makeUTCDate(run_object.blddate).getTime();
 
       // return a mapping of repo + build_time to revision for use in the tooltip.
       revisions[repo + build_time] = revision;
@@ -532,9 +532,9 @@ function getDataPoints(params) {
 function setClearButton(from, to) {
   var clear_button = $("#clear-button");
   var button_text = ("Clear selection " +
-                     makeMountainViewDate(from).toString() +
+                     makeUTCDate(from).toString() +
                      " to " +
-                     makeMountainViewDate(to).toString()
+                     makeUTCDate(to).toString()
                     ).replace(/ /g, '&nbsp;');
 
   clear_button.html(button_text);
@@ -616,7 +616,7 @@ function _makePlot(params) {
 
   var xaxis = {
     mode: 'time',
-    timezone: MOUNTAIN_VIEW,
+    timezone: TIMEZONE,
     axisLabel: 'build date',
     timeformat: '%b %d',
     minTickSize: [1, 'day']
@@ -771,7 +771,7 @@ function setControls(startdate, enddate, querystring) {
         date_changed = true;
       }
     } else {
-      $('#enddate').attr('value', ISODateString(makeMountainViewDate()));
+      $('#enddate').attr('value', ISODateString(makeUTCDate()));
       date_changed = true;
     }
     if (date_changed) {
@@ -817,9 +817,9 @@ function periodChanged() {
   if (!period) {
     return false;
   }
-  var endDate = makeMountainViewDate();
+  var endDate = makeUTCDate();
   $('#enddate').attr('value', ISODateString(endDate));
-  var startDate = makeMountainViewDate(endDate);
+  var startDate = makeUTCDate(endDate);
   startDate.setDate(startDate.getDate() - period);
   $('#startdate').attr('value', ISODateString(startDate));
   return true;
@@ -827,8 +827,8 @@ function periodChanged() {
 
 function dateChanged() {
   $('#period option[value="0"]').attr('selected', true);
-  if (ISODateString(makeMountainViewDate()) == $('#enddate').attr('value')) {
-    var period = $('#period option[value="' + (makeMountainViewDate($('#enddate').attr('value')) - makeMountainViewDate($('#startdate').attr('value')))/(24*60*60*1000) + '"]');
+  if (ISODateString(makeUTCDate()) == $('#enddate').attr('value')) {
+    var period = $('#period option[value="' + (makeUTCDate($('#enddate').attr('value')) - makeUTCDate($('#startdate').attr('value')))/(24*60*60*1000) + '"]');
     if (period.length) {
       period.attr('selected', true);
     }
