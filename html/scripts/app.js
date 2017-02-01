@@ -518,7 +518,7 @@ function getDataPoints(params) {
     if (val.noData) {
       delete(val.noData);
     } else {
-      val.color = i;
+      val.color = COLORS[i];
     }
   });
 
@@ -619,7 +619,8 @@ function _makePlot(params) {
     timezone: TIMEZONE,
     axisLabel: 'build date',
     timeformat: '%b %d',
-    minTickSize: [1, 'day']
+    minTickSize: [1, 'day'],
+    color: "dimgray",
   };
 
   if (CURRENT_SELECTION) {
@@ -635,7 +636,10 @@ function _makePlot(params) {
   }
 
   PLOT = $.plot(plot, points.data, {
-    grid: { clickable: true },
+    grid: {
+      clickable: true,
+      backgroundColor: "black",
+    },
     series: {
       points: {
         show: true,
@@ -649,7 +653,7 @@ function _makePlot(params) {
       lines: {show: true},
     },
     xaxis: xaxis,
-    yaxis: { min: 0, axisLabel: 'time (ms)' },
+    yaxis: { min: 0, axisLabel: 'time (ms)', color: "dimgray" },
     legend: { container: $('#legend'), hideable: true },
     selection: {
       mode: "x",
