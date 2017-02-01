@@ -724,7 +724,6 @@ function displayGraph(load) {
   var hash = '#/' + startdatestr + '/' + enddatestr + '/' + createQueryString(QUERY_VALUES);
   if (hash != document.location.hash) {
     document.location.hash = hash;
-    return false;
   }
 
   if (load != "load") {
